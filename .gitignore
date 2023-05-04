@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+.vs/
+bin/
+x64/
+Release/
+Debug/
+packages/
+*.cfg
+
+*.wav
