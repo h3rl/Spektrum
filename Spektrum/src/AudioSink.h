@@ -7,6 +7,7 @@
 #include <audioclient.h>
 #include <time.h>
 #include <iostream>
+#include <thread>
 
 #define REFTIMES_PER_SEC  10000000
 #define REFTIMES_PER_MILLISEC  REFTIMES_PER_SEC/1000
