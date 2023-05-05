@@ -18,7 +18,6 @@
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>
 
-#include <portaudio.h>
 #include <fftw3.h>
 
 #include "Constants.h"
