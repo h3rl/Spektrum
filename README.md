@@ -1,2 +1,7 @@
 # Spektrum
-Audiovisualizer using ffts and other soundprocessing
+Audiovisualizer using ffts and other soundprocessing, computer audio is captured using wasapi and loopbacks to capture all audio on current desktop. Audio processing is done with help of fftw3. Visualization is done with sfml and there is also a gui made with imgui.
+
+To use, download dependencies using vcpkg. following packages are used and required to build:
+```
+vcpkg.exe install fftw3 imgui-sfml sfml thor
+```
