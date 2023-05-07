@@ -2,30 +2,40 @@
 
 #include <Windows.h>
 
-App::App()
+App::App() :
+	m_window(new sf::RenderWindow()),
+	m_audiosink(new AudioSink()),
+	m_bInitialized(false)
 {
+	_D("App constructor called");
 	Config::_Window& w = CONFIG.window;
 
 	sf::ContextSettings settings;
 	settings.antialiasingLevel = 8;
 
-	window.create(sf::VideoMode(w.width, w.height), "App", sf::Style::Close | sf::Style::Titlebar, settings);
+	m_window->create(sf::VideoMode(w.width, w.height), "App", sf::Style::Close | sf::Style::Titlebar, settings);
 	if (w.max_fps > 0)
 	{
-		window.setFramerateLimit(w.max_fps);
+		m_window->setFramerateLimit(w.max_fps);
 	}
 
-	gui.init(window), // _MBYERROR("window initialized ???")
-	evtHandler.init(window);
-	audiosink.init();
-	audiosink.start();
+	if (!m_gui.init(m_window))
+	{
+		return;
+	}
+
+	 // _MBYERROR("window initialized ???")
+	//m_eventHandler.init(m_window);
+	if (!m_audiosink->init())
+	{
+		return;
+	}
 
 	setAxis(Mathematical);
 	setOrigin(BottomLeft);
 
-	Scene.init(window, audiosink);
+	m_scene.init(m_window, m_audiosink);
 
-	_D("App initialized");
 
 	 //hide window if not debug
 #ifndef _DEBUG
@@ -34,26 +44,35 @@ App::App()
 	ShowWindow(GetConsoleWindow(), SW_SHOW);
 #endif
 
+	m_bInitialized = true;
 }
 
 App::~App()
 {
-	audiosink.stop();
+	_D("App destructor called");
 }
 
 
 
 void App::run()
 {
+	if (!m_bInitialized)
+	{
+		_D("App needs to be initialized before run is called");
+		return;
+	}
+
 	sf::Clock clock;
-	sf::Time elapsedTime = sf::Time::Zero;
-	while (window.isOpen())
+	sf::Time elapsedTime;
+	while (m_window->isOpen())
 	{
 		elapsedTime = clock.restart();
 		processEvents();
 		update(elapsedTime);
 		render();
 	}
+	m_audiosink->stop();
+	_D("Audiosink stopped");
 }
 
 sf::Vector2i oldpos, pos;
@@ -84,22 +103,22 @@ void zoomViewAt(sf::Vector2i pixel, sf::RenderWindow& window, float wheeldelta)
 
 void App::processEvents()
 {
-	while (window.pollEvent(evt))
+	while (m_window->pollEvent(m_event))
 	{
-		ImGui::SFML::ProcessEvent(window, evt);
+		ImGui::SFML::ProcessEvent(*m_window, m_event);
 
-		switch (evt.type)
+		switch (m_event.type)
 		{
 		case sf::Event::MouseWheelScrolled:
 
-			scrolldelta = evt.mouseWheelScroll.delta;
+			scrolldelta = m_event.mouseWheelScroll.delta;
 			if(!CONFIG.in_gui)
-				zoomViewAt({ evt.mouseWheelScroll.x, evt.mouseWheelScroll.y }, window, scrolldelta);
+				zoomViewAt({ m_event.mouseWheelScroll.x, m_event.mouseWheelScroll.y }, *m_window, scrolldelta);
 			break;
 
 		case sf::Event::MouseMoved:
 			//_DV(evt.mouseMove);
-			pos = { evt.mouseMove.x, evt.mouseMove.y };
+			pos = { m_event.mouseMove.x, m_event.mouseMove.y };
 			if (firstTimeDelta)
 			{
 				firstTimeDelta = false;
@@ -128,15 +147,15 @@ void App::processEvents()
 			//	break;
 
 		case sf::Event::MouseButtonPressed:
-			if (evt.key.code == sf::Keyboard::Escape)
+			if (m_event.key.code == sf::Keyboard::Escape)
 			{
-				window.close();
+				m_window->close();
 			}
 
 			break;
 
 		case sf::Event::Closed:
-			window.close();
+			m_window->close();
 			break;
 		}
 	}
@@ -146,9 +165,9 @@ void App::processEvents()
 	{
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
 		{
-			sf::View view{ window.getView() };
+			sf::View view{ m_window->getView() };
 			view.move(movedelta);
-			window.setView(view);
+			m_window->setView(view);
 		}
 	}
 
@@ -158,32 +177,29 @@ void App::processEvents()
 
 void App::update(sf::Time dtTime)
 {
-	Scene.update(dtTime);
+	m_scene.update(dtTime);
 
-	gui.update(dtTime);
+	m_gui.update(dtTime);
 }
 
 void App::render()
 {
-	window.clear();
+	m_window->clear();
 
-	sf::RenderStates rs = renderStates;
-	//sf::Vector2f mpos = rs.transform.getInverse().transformPoint(evtHandler.mouse.pos);
-	//rs.transform.translate(mpos);
-	//rs.transform.scale(CONFIG.window.zoom, CONFIG.window.zoom);
+	m_scene.render();
+	m_gui.render();
 
-	Scene.render(rs);
-	gui.render(rs);
-
-	window.display();
+	m_window->display();
 }
 
 void App::setOrigin(WindowOrigin origin)
 {
-	sf::View view = window.getView();
-	_D(view.getCenter().x << " " << view.getCenter().y);
+	sf::View view = m_window->getView();
 
 	Config::_Window& w = CONFIG.window;
+
+	float ww = (float)w.width;
+	float wh = (float)w.height;
 
 	switch (origin)
 	{
@@ -191,39 +207,43 @@ void App::setOrigin(WindowOrigin origin)
 		view.setCenter(0, 0);
 		break;
 	case TopLeft:
-		view.setCenter(w.width / 2, -w.height / 2);
+		view.setCenter(ww / 2, -wh / 2);
 		break;
 	case TopRight:
-		view.setCenter(-w.width / 2, -w.height / 2);
+		view.setCenter(-ww / 2, -wh / 2);
 		break;
 	case BottomLeft:
-		view.setCenter(w.width / 2, w.height/2);
+		view.setCenter(ww / 2, wh/2);
 		break;
 	case BottomRight:
-		view.setCenter(-w.width / 2, w.height / 2);
+		view.setCenter(-ww / 2, wh / 2);
 		break;
 	default:
 		break;
 	}
 
-	window.setView(view);
+	m_window->setView(view);
 }
 
 void App::setAxis(WindowAxis axis)
 {
-	sf::View view = window.getView();
+	sf::View view = m_window->getView();
+
+	float width = (float)CONFIG.window.width;
+	float height = (float)CONFIG.window.height;
+
 	switch (axis)
 	{
 	case Mathematical:
-		view.setSize(CONFIG.window.width, -CONFIG.window.height);
+		view.setSize(width, -height);
 		break;
 	case Computer:
-		view.setSize(CONFIG.window.width, CONFIG.window.height);
+		view.setSize(width, height);
 		break;
 	default:
 		break;
 	}
-	window.setView(view);
+	m_window->setView(view);
 }
 
 //void App::handleInputMouseMove(sf::Event::MouseMoveEvent evt)

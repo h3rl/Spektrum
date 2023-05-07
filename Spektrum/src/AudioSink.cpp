@@ -2,11 +2,9 @@
 
 #include "AudioSink.h"
 
-#define EXIT_ON_ERROR(hres)  \
-				  if (FAILED(hres)) { Release(); assert("audiosinkerror"); }
-#define SAFE_RELEASE(punk)  \
-                  if ((punk) != NULL)  \
-                    { (punk)->Release(); (punk) = NULL; }
+#define RETURN_ON_ERROR(hres) if (FAILED(hres)) { release(); return false; }
+#define BREAK_ON_ERROR(hres) if (FAILED(hres)) { break; }
+#define SAFE_RELEASE(ob) if ((ob) != NULL) { (ob)->Release(); (ob) = NULL; }
 
 const CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
 const IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
@@ -15,32 +13,32 @@ const IID IID_IAudioCaptureClient = __uuidof(IAudioCaptureClient);
 
 AudioSink::AudioSink()
 {
-	//this->init();
+    _D("AudioSink constructor called");
 }
 
 AudioSink::~AudioSink()
 {
-	this->stop();
+    _D("AudioSink destructor called");
 }
 
-void AudioSink::initWASAPI()
+bool AudioSink::initWASAPI()
 {
     HRESULT hr;
 
     hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     hr = CoCreateInstance(CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&pDeviceEnumerator);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     hr = pDeviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     hr = pDevice->Activate(IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&pAudioClient);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     hr = pAudioClient->GetMixFormat(&pwaveformatex);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     //pwaveformatex->wFormatTag = WAVE_FORMAT_PCM;
     //pwaveformatex->nChannels = 2;
@@ -53,25 +51,28 @@ void AudioSink::initWASAPI()
     WAVEFORMATEX* pwfx = NULL;
 
     hr = pAudioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, pwaveformatex, &pwfx);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     hr = pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, hnsRequestedDuration, 0, pwaveformatex, NULL);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     // Get the size of the allocated buffer.
     hr = pAudioClient->GetBufferSize(&bufferFrameCount);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     hr = pAudioClient->GetService(IID_IAudioCaptureClient, (void**)&pCaptureClient);
-    EXIT_ON_ERROR(hr);
+    RETURN_ON_ERROR(hr);
 
     // Calculate the actual duration of the allocated buffer.
     hnsActualDuration = (double)REFTIMES_PER_SEC * bufferFrameCount / pwaveformatex->nSamplesPerSec;
+
+    return true;
 }
 
-void AudioSink::initFFTW3()
+bool AudioSink::initFFTW3()
 {
     fftPlan = fftwf_plan_r2r_1d(FFT_SIZE, nullptr, nullptr, fftwf_r2r_kind::FFTW_R2HC, FFTW_ESTIMATE);
+    return true;
 }
 
 void AudioSink::releaseFFTW3()
@@ -83,18 +84,30 @@ void AudioSink::releaseFFTW3()
 }
 
 
-void AudioSink::init()
+bool AudioSink::init()
 {
-	if (this->initialized)
-	{
-		return;
-	}
+    if (!this->initWASAPI())
+    {
+        return false;
+    }
 
-    this->initWASAPI();
-    this->initFFTW3();
+    if (!this->initFFTW3())
+    {
+        return false;
+    }
 
-	this->initialized = true;
-    this->bStopThread = false;
+    this->m_bStopThread = false;
+
+    // Start recording.
+    hr = pAudioClient->Start();
+    RETURN_ON_ERROR(hr);
+
+    // Begin thread to write data to buffer
+    thread = std::thread(&AudioSink::sinkthread, this);
+
+    this->m_bInitialized = true;
+
+    return true;
 }
 
 void AudioSink::sinkthread()
@@ -102,122 +115,113 @@ void AudioSink::sinkthread()
     const int bytesPerSamplePerChannel = pwaveformatex->wBitsPerSample / 8;
     const int bytesPerSample = bytesPerSamplePerChannel * pwaveformatex->nChannels;
 
-    _D("Bytes per sample per channel: " << bytesPerSamplePerChannel);
+    //_D("Bytes per sample per channel: " << bytesPerSamplePerChannel);
 
-    while (bStopThread == false)
+
+
+    while (!m_bStopThread)
     {
         // Sleep for half the buffer duration.
-        //Sleep(hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
-        while (true)
+        Sleep(hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
+        try
         {
-            try
+            hr = pCaptureClient->GetNextPacketSize(&packetLength);
+            BREAK_ON_ERROR(hr);
+
+            if (packetLength == 0)
             {
-                hr = pCaptureClient->GetNextPacketSize(&packetLength);
-                EXIT_ON_ERROR(hr);
-
-                if (packetLength == 0)
-                {
-                    break;
-                }
-
-                pData = NULL;
-
-                // Get the available data in the shared buffer.
-                hr = pCaptureClient->GetBuffer(&pData, &numFramesAvailable, &flags, NULL, NULL);
-                EXIT_ON_ERROR(hr);
-
-                if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
-                {
-                    pData = NULL;  // Tell CopyData to write silence.
-                    break;
-                }
-
-                //_D("Num frames available: " << numFramesAvailable);
-                const int bufferSampleCount = numFramesAvailable * pwaveformatex->nChannels;
-
-                // NOTE:
-                // audioframe = samplesizeinbytes * numberofchannels
-
-                //std::cout << "bytesPerSamplePerChannel: " << bytesPerSamplePerChannel << std::endl;
-                //std::cout << "bytesPerSample: " << bytesPerSample << std::endl;
-                //std::cout << "bufferSampleCount: " << bufferSampleCount << std::endl;
-                //std::cout << "numFramesAvailable: " << numFramesAvailable << std::endl;
-                //std::cout << "waveformat" << pwaveformatex->wFormatTag << std::endl;
-                /*
-                bytesPerSample: 8
-                bufferSampleCount: 960
-                numFramesAvailable: 480
-                bytesPerSamplePerChannel: 4
-                */
-                if (bytesPerSamplePerChannel == 4) // float
-                {
-                    float* pfData = (float*)pData;
-                    ZeroMemory(fftInput, sizeof(float) * FFT_SIZE);
-                    for (int i = 0; i < bufferSampleCount; i++)
-                    {
-						fftInput[i] = pfData[i];
-					}
-
-
-				}
-                else if (bytesPerSamplePerChannel == 2) // short
-                {
-					std::cout << "short uniplemented" << std::endl;
-				}
-
-                //TODO: USE DATA
-                //for (int i = 0; i < inpsize; i++)
-                //{
-                //    // apply Hann window to reduce spectral leakage
-                //    fftInput[i] = fftInput[i] * (0.5f - 0.5f * cos(2.f * (float)PI * i / (FFT_SIZE - 1)));
-                //}
-
-                // Perform the forward FFT on the input buffer
-                fftwf_execute_r2r(fftPlan, fftInput, fftOutput);
-
-                hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
-                EXIT_ON_ERROR(hr);
+                continue;
             }
-            catch (const std::exception&)
+
+            // Get the available data in the shared buffer.
+            hr = pCaptureClient->GetBuffer(&pData, &numFramesAvailable, &flags, NULL, NULL);
+            BREAK_ON_ERROR(hr);
+
+            if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
             {
-                _D("Error: " << GetLastError());
+                pData = NULL;  // Tell CopyData to write silence.
                 break;
             }
+
+            //_D("Num frames available: " << numFramesAvailable);
+            const int bufferSampleCount = numFramesAvailable * pwaveformatex->nChannels;
+
+            // NOTE:
+            // audioframe = samplesizeinbytes * numberofchannels
+
+            //std::cout << "bytesPerSamplePerChannel: " << bytesPerSamplePerChannel << std::endl;
+            //std::cout << "bytesPerSample: " << bytesPerSample << std::endl;
+            //std::cout << "bufferSampleCount: " << bufferSampleCount << std::endl;
+            //std::cout << "numFramesAvailable: " << numFramesAvailable << std::endl;
+            //std::cout << "waveformat" << pwaveformatex->wFormatTag << std::endl;
+            /*
+            bytesPerSample: 8
+            bufferSampleCount: 960
+            numFramesAvailable: 480
+            bytesPerSamplePerChannel: 4
+            */
+            if (bytesPerSamplePerChannel == 4) // float
+            {
+                float* pfData = (float*)pData;
+                ZeroMemory(fftInput, sizeof(float) * FFT_SIZE);
+                for (int i = 0; i < bufferSampleCount; i++)
+                {
+                    fftInput[i] = pfData[i];
+                }
+
+			}
+            else if (bytesPerSamplePerChannel == 2) // short
+            {
+                _D("short uniplemented");
+                BREAK_ON_ERROR(-1);
+			}
+            else if (bytesPerSamplePerChannel == 8) // double
+            {
+                _D("double unimplemented");
+                BREAK_ON_ERROR(-1);
+            }
+
+            //TODO: USE DATA
+            //for (int i = 0; i < inpsize; i++)
+            //{
+            //    // apply Hann window to reduce spectral leakage
+            //    fftInput[i] = fftInput[i] * (0.5f - 0.5f * cos(2.f * (float)PI * i / (FFT_SIZE - 1)));
+            //}
+
+            // Perform the forward FFT on the input buffer
+            fftwf_execute_r2r(fftPlan, fftInput, fftOutput);
+
+            hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
+            BREAK_ON_ERROR(hr);
         }
-	
+        catch (const std::exception&)
+        {
+            _D("Error: " << GetLastError());
+            break;
+        }
     }
-
-    hr = pAudioClient->Stop();  // Stop recording.
-    EXIT_ON_ERROR(hr);
-
-    Release();
-}
-
-void AudioSink::start()
-{
-    hr = pAudioClient->Start();  // Start recording.
-    EXIT_ON_ERROR(hr);
-
-    // Begin thread to write data to buffer
-    thread = std::thread(&AudioSink::sinkthread, this);
 }
 
 void AudioSink::stop()
 {
-    bStopThread = true;
+    if (!m_bInitialized) return;
+
+    m_bStopThread = true;
+    m_bInitialized = false;
     
     // wait for thread to finish
-    // thread calls Release() and stops recording
+    // thread calls release() and stops recording
     thread.join();
 
-	CoUninitialize();
+    release();
 }
 
-void AudioSink::Release()
+void AudioSink::release()
 {
     CoTaskMemFree(pwaveformatex);
     SAFE_RELEASE(pDeviceEnumerator);
     SAFE_RELEASE(pDevice);
     SAFE_RELEASE(pAudioClient);
     SAFE_RELEASE(pCaptureClient);
+    CoUninitialize();
 }

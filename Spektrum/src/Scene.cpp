@@ -1,18 +1,17 @@
 #include "Scene.h"
 #include "AudioSink.h"
 
-Scene::Scene() :
-window(nullptr),
-config(nullptr)
+Scene::Scene()
 {
+	m_window = nullptr;
+	m_audiosink = nullptr;
 }
 
-void Scene::init(sf::RenderWindow& window, AudioSink& _soundhandler)
+void Scene::init(shared_ptr<sf::RenderWindow> window, shared_ptr<AudioSink> audiosink)
 {
-	this->window = &window;
-	this->audiosink = &_soundhandler;
+	this->m_window = window;
+	this->m_audiosink = audiosink;
 	buildScene();
-	_D("Scene generated");
 }
 
 void Scene::buildScene()
@@ -31,14 +30,14 @@ void Scene::buildScene()
 	//r2.setPosition(sf::Vector2f(-12.5f + 50.f, -12.5f + 50.f));
 	//rects.push_back(r2);
 
-	float wheight = window->getSize().y / 2.f;
+	float wheight = m_window->getSize().y / 2.f;
 
-	const int arr_size = sizeof(audiosink->fftOutput) / sizeof(audiosink->fftOutput[0]);
+	const int arr_size = sizeof(m_audiosink->fftOutput) / sizeof(m_audiosink->fftOutput[0]);
 
 	for (int i = 0; i < arr_size; i++)
 	{
-		float xpos = window->getSize().x * i / (float)arr_size;
-		float ypos = window->getSize().y * 1/8;
+		float xpos = m_window->getSize().x * i / (float)arr_size;
+		float ypos = m_window->getSize().y * 1/8;
 
 		sf::RectangleShape r;
 		r.setFillColor(sf::Color::Blue);
@@ -47,33 +46,25 @@ void Scene::buildScene()
 	}
 }
 
-
-void Scene::init(sf::RenderWindow& window, AudioSink& _soundhandler, sf::RenderStates& state)
-{
-	this->Scene::init(window, _soundhandler);
-	renderStates = &state;
-}
-
 //TODO:finish
 void Scene::update(sf::Time dtTime)
 {
-	float wheight = window->getSize().y * 7 / 8;
-	float wwidth = window->getSize().x;
+	float wheight = m_window->getSize().y * 7 / 8;
 	
-	const int arr_size = sizeof(audiosink->fftOutput) / sizeof(audiosink->fftOutput[0]);
+	const int arr_size = sizeof(m_audiosink->fftOutput) / sizeof(m_audiosink->fftOutput[0]);
 
 	for (int i = 0; i < arr_size; i++)
 	{
 		sf::RectangleShape& r = rects[i];
-		r.setSize(sf::Vector2f(1, abs(audiosink->fftOutput[i] * wheight)));
+		r.setSize(sf::Vector2f(1, abs(m_audiosink->fftOutput[i] * wheight)));
 	}
 }
 
 //TODO:finish
-void Scene::render(sf::RenderStates rs)
+void Scene::render()
 {
 	for (const auto& r : rects)
 	{
-		window->draw(r);
+		m_window->draw(r);
 	}
 }

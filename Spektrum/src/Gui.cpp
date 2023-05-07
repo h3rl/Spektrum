@@ -2,19 +2,8 @@
 
 #include "Gui.h"
 
-Gui::Gui() :
-	window(nullptr)
+Gui::Gui()
 {
-	if (!font.loadFromFile("Assets\\arial.ttf")) return;
-
-	_D("font loaded");
-
-	fpsText.setFont(font);
-	fpsText.setString("");
-	fpsText.setCharacterSize(14); // in pixels, not points!
-	fpsText.setFillColor(sf::Color(110, 255, 0));
-	//fpsText.setStyle(sf::Text::Bold | sf::Text::Underlined);
-
 }
 
 Gui::~Gui()
@@ -22,38 +11,59 @@ Gui::~Gui()
 	ImGui::SFML::Shutdown();
 }
 
-void Gui::init(sf::RenderWindow& window)
+bool Gui::init(shared_ptr<sf::RenderWindow> window)
 {
-	ImGui::SFML::Init(window);
-	this->window = &window;
-	_D("Gui initialized");
+	if (!window)
+	{
+		_D("GUI: Window is nullptr");
+		return false;
+	}
+	this->m_window = window;
+	if (!ImGui::SFML::Init(*window))
+	{
+		_D("GUI: Imgui init failed");
+		return false;
+	}
+
+	if (!m_font.loadFromFile("Assets\\arial.ttf"))
+	{
+		_D("GUI: Load font failed");
+		return false;
+	}
+
+	m_fpsText.setFont(m_font);
+	m_fpsText.setString("");
+	m_fpsText.setCharacterSize(14); // in pixels, not points!
+	m_fpsText.setFillColor(sf::Color(110, 255, 0));
+
+	return true;
 }
 
 void Gui::update(sf::Time dtTime)
 {
-	ImGui::SFML::Update(*window,dtTime);
+	ImGui::SFML::Update(*m_window,dtTime);
 
 	CONFIG.in_gui = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
 
-	fpsText.setString(std::to_string((int)( 1 / dtTime.asSeconds())));
+	m_fpsText.setString(std::to_string((int)( 1 / dtTime.asSeconds())));
 }
 
-void Gui::render(sf::RenderStates& rs)
+void Gui::render()
 {
 	//renderConfigWindow();
 	//renderTestWindow();
-	ImGui::SFML::Render(*window);
+	ImGui::SFML::Render(*m_window);
 
-	fpsText.setPosition({ 0,0 });
+	m_fpsText.setPosition({ 0,0 });
 
-	sf::View view{ window->getView() };
+	sf::View oldview = m_window->getView();
 
 	// Reset view to default, so we can draw the text
-	window->setView(window->getDefaultView());
-	window->draw(fpsText);
+	m_window->setView(m_window->getDefaultView());
+	m_window->draw(m_fpsText);
 	
 	// Set it back to the original view
-	window->setView(view);
+	m_window->setView(oldview);
 }
 
 void Gui::renderConfigWindow()
@@ -72,7 +82,7 @@ void Gui::renderConfigWindow()
 	{
 		CONFIG.config.save = true;
 	}
-	float x = window->getSize().x - 200;
+	float x = m_window->getSize().x - 200;
 	ImGui::SetWindowPos({ x, 10 }, ImGuiCond_Once);
 	ImGui::End();
 }
@@ -85,7 +95,6 @@ void Gui::renderTestWindow()
 		return;
 	}
 	ImGui::SetWindowPos({ 10,10 }, ImGuiCond_Once);
-
 
 	ImGui::End();
 }

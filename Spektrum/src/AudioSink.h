@@ -41,12 +41,10 @@ private:
 
 	BYTE* pData = NULL;
 
-
-
 	std::thread thread;
 
-	bool initialized = false;
-	bool bStopThread = false;
+	bool m_bInitialized = false;
+	bool m_bStopThread = false;
 
 public:
 
@@ -56,19 +54,16 @@ public:
 	AudioSink();
 	~AudioSink();
 
-	void init();
-	void initWASAPI();
-	void initFFTW3();
-
-	void releaseFFTW3();
-
-	void start();
+	bool init();
 	void stop();
 
 private:
 
 	void sinkthread();
 
-	void Release();
+	bool initWASAPI();
+	bool initFFTW3();
 
+	void release();
+	void releaseFFTW3();
 };

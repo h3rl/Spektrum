@@ -4,8 +4,6 @@
 class EventHandler
 {
 public:
-	sf::Event evt;
-
 	struct Mouse {
 		struct Wheel
 		{
@@ -24,7 +22,7 @@ public:
 
 	void handleEvents();
 
-	void init(sf::RenderWindow& window);
+	void init(shared_ptr<sf::RenderWindow> window);
 
 	bool pressed(sf::Keyboard::Key key);
 	bool pressed(sf::Mouse::Button button);
@@ -37,5 +35,5 @@ private:
 	void reset();
 
 	bool firstTimeDelta;
-	sf::RenderWindow* window;
+	shared_ptr<sf::RenderWindow> m_window;
 };

@@ -6,12 +6,12 @@
 class Gui : private sf::NonCopyable
 {
 public:
-	Gui();
-	~Gui();
+							Gui();
+							~Gui();
 
 	void					update(sf::Time dtTime);
-	void					render(sf::RenderStates& rs);
-	void					init(sf::RenderWindow& window);
+	void					render();
+	bool					init(shared_ptr<sf::RenderWindow> window);
 
 private:
 
@@ -19,9 +19,9 @@ private:
 	void					renderTestWindow();
 private:
 
-	sf::RenderWindow*		window;
-	sf::Font				font;
-	sf::Clock				clock;
+	shared_ptr<sf::RenderWindow>		m_window;
+	sf::Font							m_font;
+	sf::Clock							clock;
 
-	sf::Text				fpsText;
+	sf::Text							m_fpsText;
 };

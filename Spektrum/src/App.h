@@ -32,7 +32,6 @@ public:
 	void					run();
 
 private:
-
 	void					processEvents();
 	void					update(sf::Time dtTime);
 	void					render();
@@ -42,14 +41,13 @@ private:
 
 private:
 
-	sf::RenderWindow		window;
-	sf::Event				evt{};
-	sf::RenderStates		renderStates;
-	sf::RenderStates		renderStatesAbsolute;
-	Scene					Scene;
-	Gui						gui;
-	EventHandler			evtHandler;
-	AudioSink				audiosink;
+	bool					m_bInitialized;
 
-	sf::Font				font;
+	shared_ptr<sf::RenderWindow>		m_window;
+	sf::Event				m_event{};
+
+	Scene					m_scene;
+	Gui						m_gui;
+	shared_ptr<AudioSink>				m_audiosink;
+	//EventHandler			m_eventHandler;
 };

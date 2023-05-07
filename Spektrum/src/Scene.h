@@ -10,10 +10,9 @@ class Scene : private sf::NonCopyable
 {
 public:
 							Scene();
-	void					init(sf::RenderWindow& window, AudioSink& soundhandler);
-	void					init(sf::RenderWindow& window, AudioSink& soundhandler, sf::RenderStates& state);
+	void					init(shared_ptr<sf::RenderWindow> window, shared_ptr<AudioSink> audiosink);
 	void					update(sf::Time dtTime);
-	void					render(sf::RenderStates rs);
+	void					render();
 
 private:
 
@@ -22,10 +21,6 @@ private:
 	std::vector<sf::RectangleShape>	rects;
 
 private:
-	Config*					config;
-	sf::RenderWindow*		window;
-	sf::RenderStates*		renderStates;
-	sf::Transform			transform;
-
-	AudioSink*				audiosink;
+	shared_ptr<sf::RenderWindow>	m_window;
+	shared_ptr<AudioSink>			m_audiosink;
 };

@@ -10,8 +10,8 @@ public:
 
 	struct _Window
 	{
-		int width{ 1600 };
-		int height{ 900 };
+		int width{ 600 };
+		int height{ 400 };
 		float zoom{ 1.0f };
 		int max_fps = 165;
 	} window;

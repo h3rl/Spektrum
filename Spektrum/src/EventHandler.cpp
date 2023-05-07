@@ -1,7 +1,6 @@
 #include "EventHandler.h"
 
 EventHandler::EventHandler() :
-	evt(),
 	firstTimeDelta(false)
 {
 	mouse.pos = { 0.0f,0.0f };
@@ -24,9 +23,11 @@ void EventHandler::handleEvents()
 
 	this->reset();
 
-	while (window->pollEvent(evt))
+	sf::Event evt;
+
+	while (m_window->pollEvent(evt))
 	{
-		ImGui::SFML::ProcessEvent(*window, evt);
+		ImGui::SFML::ProcessEvent(*m_window, evt);
 
 		switch (evt.type)
 		{
@@ -85,15 +86,15 @@ void EventHandler::handleEvents()
 		//	break;
 
 		case sf::Event::Closed:
-			window->close();
+			m_window->close();
 			break;
 		}
 	}
 }
 
-void EventHandler::init(sf::RenderWindow& window)
+void EventHandler::init(shared_ptr<sf::RenderWindow> window)
 {
-	this->window = &window;
+	this->m_window = window;
 }
 
 bool EventHandler::pressed(sf::Keyboard::Key key)
