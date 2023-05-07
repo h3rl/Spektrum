@@ -103,22 +103,23 @@ void zoomViewAt(sf::Vector2i pixel, sf::RenderWindow& window, float wheeldelta)
 
 void App::processEvents()
 {
-	while (m_window->pollEvent(m_event))
+	sf::Event evt;
+	while (m_window->pollEvent(evt))
 	{
-		ImGui::SFML::ProcessEvent(*m_window, m_event);
+		ImGui::SFML::ProcessEvent(*m_window, evt);
 
-		switch (m_event.type)
+		switch (evt.type)
 		{
 		case sf::Event::MouseWheelScrolled:
 
-			scrolldelta = m_event.mouseWheelScroll.delta;
+			scrolldelta = evt.mouseWheelScroll.delta;
 			if(!CONFIG.in_gui)
-				zoomViewAt({ m_event.mouseWheelScroll.x, m_event.mouseWheelScroll.y }, *m_window, scrolldelta);
+				zoomViewAt({ evt.mouseWheelScroll.x, evt.mouseWheelScroll.y }, *m_window, scrolldelta);
 			break;
 
 		case sf::Event::MouseMoved:
 			//_DV(evt.mouseMove);
-			pos = { m_event.mouseMove.x, m_event.mouseMove.y };
+			pos = { evt.mouseMove.x, evt.mouseMove.y };
 			if (firstTimeDelta)
 			{
 				firstTimeDelta = false;
@@ -147,7 +148,7 @@ void App::processEvents()
 			//	break;
 
 		case sf::Event::MouseButtonPressed:
-			if (m_event.key.code == sf::Keyboard::Escape)
+			if (evt.key.code == sf::Keyboard::Escape)
 			{
 				m_window->close();
 			}

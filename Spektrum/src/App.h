@@ -44,8 +44,6 @@ private:
 	bool					m_bInitialized;
 
 	shared_ptr<sf::RenderWindow>		m_window;
-	sf::Event				m_event{};
-
 	Scene					m_scene;
 	Gui						m_gui;
 	shared_ptr<AudioSink>				m_audiosink;
