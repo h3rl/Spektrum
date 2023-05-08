@@ -7,20 +7,16 @@
 #include <Windows.h>
 int main()
 {
-    //srand(time(0));
+    //hide window if not debug
+#ifndef _DEBUG
+    ShowWindow(GetConsoleWindow(), SW_HIDE);
+#else
+    ShowWindow(GetConsoleWindow(), SW_SHOW);
+#endif
 
-    //try {
-    App App;
-    App.run();
-    //}
-    //catch (std::exception& e)
-    //{
-    //    _D("\nEXCEPTION: " << e.what());
-    //    return EXIT_FAILURE;
-    //}
+    App app;
+    app.run();
 
     _D("End of main, bye");
-
-    // end of application
 	return 0;
 }

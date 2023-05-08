@@ -92,7 +92,7 @@ void EventHandler::handleEvents()
 	}
 }
 
-void EventHandler::init(shared_ptr<sf::RenderWindow> window)
+void EventHandler::init(shared_ptr<Window> window)
 {
 	this->m_window = window;
 }

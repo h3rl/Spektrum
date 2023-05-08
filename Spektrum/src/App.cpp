@@ -3,7 +3,7 @@
 #include <Windows.h>
 
 App::App() :
-	m_window(new sf::RenderWindow()),
+	m_window(new Window()),
 	m_audiosink(new AudioSink()),
 	m_bInitialized(false)
 {
@@ -12,8 +12,8 @@ App::App() :
 
 	sf::ContextSettings settings;
 	settings.antialiasingLevel = 8;
-
-	m_window->create(sf::VideoMode(w.width, w.height), "App", sf::Style::Close | sf::Style::Titlebar, settings);
+	
+	m_window->create(sf::VideoMode(w.width, w.height), "App", sf::Style::Default, settings);
 	if (w.max_fps > 0)
 	{
 		m_window->setFramerateLimit(w.max_fps);
@@ -31,18 +31,9 @@ App::App() :
 		return;
 	}
 
-	setAxis(Mathematical);
-	setOrigin(BottomLeft);
+	m_window->updateSize();
 
 	m_scene.init(m_window, m_audiosink);
-
-
-	 //hide window if not debug
-#ifndef _DEBUG
-	ShowWindow(GetConsoleWindow(), SW_HIDE);
-#else
-	ShowWindow(GetConsoleWindow(), SW_SHOW);
-#endif
 
 	m_bInitialized = true;
 }
@@ -80,7 +71,7 @@ sf::Vector2f movedelta;
 float scrolldelta;
 bool firstTimeDelta = true;
 
-void zoomViewAt(sf::Vector2i pixel, sf::RenderWindow& window, float wheeldelta)
+void zoomViewAt(sf::Vector2i pixel, Window& window, float wheeldelta)
 {
 	if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift))
 		return;
@@ -111,13 +102,14 @@ void App::processEvents()
 		switch (evt.type)
 		{
 		case sf::Event::MouseWheelScrolled:
-
+		{
 			scrolldelta = evt.mouseWheelScroll.delta;
-			if(!CONFIG.in_gui)
+			if (!CONFIG.in_gui)
 				zoomViewAt({ evt.mouseWheelScroll.x, evt.mouseWheelScroll.y }, *m_window, scrolldelta);
 			break;
-
+		}
 		case sf::Event::MouseMoved:
+		{
 			//_DV(evt.mouseMove);
 			pos = { evt.mouseMove.x, evt.mouseMove.y };
 			if (firstTimeDelta)
@@ -132,6 +124,7 @@ void App::processEvents()
 			oldpos = pos;
 
 			break;
+		}
 
 			//case sf::Event::MouseEntered:
 			//	break;
@@ -147,17 +140,29 @@ void App::processEvents()
 			//	//_D((char)evt.text.unicode);
 			//	break;
 
-		case sf::Event::MouseButtonPressed:
+		case sf::Event::KeyPressed:
+		{
 			if (evt.key.code == sf::Keyboard::Escape)
 			{
 				m_window->close();
 			}
 
 			break;
+		}
+		case sf::Event::Resized:
+		{
+			// update view
+			m_window->updateSize();
 
+			// regenerate scene
+			m_scene.buildScene();
+			break;
+		}
 		case sf::Event::Closed:
+		{
 			m_window->close();
 			break;
+		}
 		}
 	}
 
@@ -192,61 +197,6 @@ void App::render()
 
 	m_window->display();
 }
-
-void App::setOrigin(WindowOrigin origin)
-{
-	sf::View view = m_window->getView();
-
-	Config::_Window& w = CONFIG.window;
-
-	float ww = (float)w.width;
-	float wh = (float)w.height;
-
-	switch (origin)
-	{
-	case Center:
-		view.setCenter(0, 0);
-		break;
-	case TopLeft:
-		view.setCenter(ww / 2, -wh / 2);
-		break;
-	case TopRight:
-		view.setCenter(-ww / 2, -wh / 2);
-		break;
-	case BottomLeft:
-		view.setCenter(ww / 2, wh/2);
-		break;
-	case BottomRight:
-		view.setCenter(-ww / 2, wh / 2);
-		break;
-	default:
-		break;
-	}
-
-	m_window->setView(view);
-}
-
-void App::setAxis(WindowAxis axis)
-{
-	sf::View view = m_window->getView();
-
-	float width = (float)CONFIG.window.width;
-	float height = (float)CONFIG.window.height;
-
-	switch (axis)
-	{
-	case Mathematical:
-		view.setSize(width, -height);
-		break;
-	case Computer:
-		view.setSize(width, height);
-		break;
-	default:
-		break;
-	}
-	m_window->setView(view);
-}
-
 //void App::handleInputMouseMove(sf::Event::MouseMoveEvent evt)
 //{
 //	if (ImGui::IsMouseDown(ImGuiMouseButton_Left))

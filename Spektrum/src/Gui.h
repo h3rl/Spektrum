@@ -11,7 +11,7 @@ public:
 
 	void					update(sf::Time dtTime);
 	void					render();
-	bool					init(shared_ptr<sf::RenderWindow> window);
+	bool					init(shared_ptr<Window> window);
 
 private:
 
@@ -19,7 +19,7 @@ private:
 	void					renderTestWindow();
 private:
 
-	shared_ptr<sf::RenderWindow>		m_window;
+	shared_ptr<Window>		m_window;
 	sf::Font							m_font;
 	sf::Clock							clock;
 

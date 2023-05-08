@@ -14,6 +14,8 @@ public:
 		int height{ 400 };
 		float zoom{ 1.0f };
 		int max_fps = 165;
+
+		bool bResized{ false };
 	} window;
 
 	struct _App

@@ -17,6 +17,7 @@
 #include <SFML/Network.hpp>
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>
+#include "Window.h"
 
 #include <fftw3.h>
 

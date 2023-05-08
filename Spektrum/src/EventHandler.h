@@ -22,7 +22,7 @@ public:
 
 	void handleEvents();
 
-	void init(shared_ptr<sf::RenderWindow> window);
+	void init(shared_ptr<Window> window);
 
 	bool pressed(sf::Keyboard::Key key);
 	bool pressed(sf::Mouse::Button button);
@@ -35,5 +35,5 @@ private:
 	void reset();
 
 	bool firstTimeDelta;
-	shared_ptr<sf::RenderWindow> m_window;
+	shared_ptr<Window> m_window;
 };

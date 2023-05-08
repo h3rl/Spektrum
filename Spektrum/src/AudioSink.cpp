@@ -122,7 +122,7 @@ void AudioSink::sinkthread()
     while (!m_bStopThread)
     {
         // Sleep for half the buffer duration.
-        Sleep(hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
+        //Sleep(hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
         try
         {
             hr = pCaptureClient->GetNextPacketSize(&packetLength);

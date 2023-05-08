@@ -7,7 +7,7 @@ Scene::Scene()
 	m_audiosink = nullptr;
 }
 
-void Scene::init(shared_ptr<sf::RenderWindow> window, shared_ptr<AudioSink> audiosink)
+void Scene::init(shared_ptr<Window> window, shared_ptr<AudioSink> audiosink)
 {
 	this->m_window = window;
 	this->m_audiosink = audiosink;
@@ -30,14 +30,16 @@ void Scene::buildScene()
 	//r2.setPosition(sf::Vector2f(-12.5f + 50.f, -12.5f + 50.f));
 	//rects.push_back(r2);
 
-	float wheight = m_window->getSize().y / 2.f;
-
+	const float wheight = m_window->getSize().y / 2.f;
 	const int arr_size = sizeof(m_audiosink->fftOutput) / sizeof(m_audiosink->fftOutput[0]);
+
+	// make sure its emtpy
+	rects.clear();
 
 	for (int i = 0; i < arr_size; i++)
 	{
-		float xpos = m_window->getSize().x * i / (float)arr_size;
-		float ypos = m_window->getSize().y * 1/8;
+		const float xpos = m_window->getSize().x * ((float)i / (float)arr_size);
+		const float ypos = 0;// m_window->getSize().y * 1 / 8;
 
 		sf::RectangleShape r;
 		r.setFillColor(sf::Color::Blue);
@@ -49,7 +51,7 @@ void Scene::buildScene()
 //TODO:finish
 void Scene::update(sf::Time dtTime)
 {
-	float wheight = m_window->getSize().y * 7 / 8;
+	float wheight = m_window->getSize().y * 7.f / 8.f;
 	
 	const int arr_size = sizeof(m_audiosink->fftOutput) / sizeof(m_audiosink->fftOutput[0]);
 

@@ -11,7 +11,7 @@ Gui::~Gui()
 	ImGui::SFML::Shutdown();
 }
 
-bool Gui::init(shared_ptr<sf::RenderWindow> window)
+bool Gui::init(shared_ptr<Window> window)
 {
 	if (!window)
 	{
@@ -57,9 +57,9 @@ void Gui::render()
 	m_fpsText.setPosition({ 0,0 });
 
 	sf::View oldview = m_window->getView();
-
+	sf::View view = m_window->getSizedView();
 	// Reset view to default, so we can draw the text
-	m_window->setView(m_window->getDefaultView());
+	m_window->setView(view);
 	m_window->draw(m_fpsText);
 	
 	// Set it back to the original view
