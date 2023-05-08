@@ -8,7 +8,7 @@ m_viewOrigin(WindowOrigin::BottomLeft)
 
 }
 
-sf::View& Window::getSizedView()
+sf::View Window::getSizedView()
 {
 	sf::View view = this->getDefaultView();
 	sf::Vector2f wSize = (sf::Vector2f)this->getSize();

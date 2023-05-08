@@ -15,6 +15,10 @@ public:
 
 private:
 
+	void					renderFpsText();	
+
+	void					renderMenuV1();
+
 	void					renderConfigWindow();
 	void					renderTestWindow();
 private:

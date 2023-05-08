@@ -73,7 +73,7 @@ bool AudioSink::initWASAPI()
     RETURN_ON_ERROR(hr);
 
     // Calculate the actual duration of the allocated buffer.
-    hnsActualDuration = (double)REFTIMES_PER_SEC * bufferFrameCount / pwaveformatex->nSamplesPerSec;
+    //hnsActualDuration = (double)REFTIMES_PER_SEC * bufferFrameCount / pwaveformatex->nSamplesPerSec;
 
     return true;
 }
@@ -92,6 +92,32 @@ void AudioSink::releaseFFTW3()
     }
 }
 
+void AudioSink::applyBlackman()
+{
+    const float alpha = 0.16f;
+    const float a0 = (1.f - alpha) / 2.f;
+    const float a1 = 0.5f;
+    const float a2 = alpha / 2.f;
+    for (int i = 0; i < FFT_SIZE; i++)
+    {
+        // Blackman window
+        const float wn = a0 - a1 * cos(2.f * (float)PI * i / FFT_SIZE) + a2 * cos(4.f * (float)PI * i / FFT_SIZE);
+
+        // apply window
+        fftInput[i] = fftInput[i] * wn;
+    }
+}
+void AudioSink::applyHamming()
+{
+    for (int i = 0; i < FFT_SIZE; i++)
+    {
+        // Hamming window
+        const float wn = 0.54f - 0.46f * cos(2.f * (float)PI * i / FFT_SIZE);
+        
+        // apply window
+        fftInput[i] = fftInput[i] * wn;
+    }
+}
 
 bool AudioSink::init()
 {
@@ -201,28 +227,23 @@ void AudioSink::sinkthread()
             // copy data from deque to fft input
             std::copy(m_rawmonodata.begin(), m_rawmonodata.end(), fftInput);
 
-            // apply blackman window
-            const float alpha = 0.16f;
-            const float a0 = (1.f - alpha) / 2.f;
-            const float a1 = 0.5f;
-            const float a2 = alpha / 2.f;
-            for (int i = 0; i < FFT_SIZE; i++)
+            switch (CONFIG.audio.windowfunction)
             {
-                // Blackman window
-                const float wn = a0 - a1 * cos(2.f * (float)PI * i / FFT_SIZE) + a2 * cos(4.f * (float)PI * i / FFT_SIZE);
-
-                // apply window
-                fftInput[i] = fftInput[i] * wn;
+            case Config::_Audio::Blackman:
+                this->applyBlackman();
+				break;
+            case Config::_Audio::Hamming:
+                this->applyHamming();
+                break;
+            default:
+                break;
             }
 
             // apply fft
             fftwf_execute(fftPlan);
 
             // fftOutputComplex is now populated with FFT_SIZE/2 complex numbers
-            // find magnitude, store in fftOutput
-
-            float max_db = -500.f;
-            float min_db = 0.f;
+            // find magnitude, store in fftOutput, apply time smoothing
 
             for (int i = 0; i < FFT_SIZE_HALF; i++)
             {
@@ -230,36 +251,31 @@ void AudioSink::sinkthread()
 				const float imag = fftOutputComplex[i][1];
 				const float mag = sqrt(real * real + imag * imag);
 
-                // apply time smoothing
-                const float tau = 0.1f;
-				fftOutput[i] = tau*fftOutput[i] + (1.f-tau)*mag;
+                const float tau = CONFIG.audio.time_smoothing;
+                fftOutput[i] = tau * fftOutput[i] + (1.f - tau) * mag;
 
-                // calc db
-                const float dbout = 20.f * log10(fftOutput[i]);
+                switch (CONFIG.audio.barstyle)
+                {
+                case Config::_Audio::Linear:
+                {
+                    Output[i] = fftOutput[i];
+                    break;
+                }
+                case Config::_Audio::Db:
+                {
+                    // calc db
+                    const float dbout = 20.f * log10(fftOutput[i]);
 
-                // check for min/max
-                //if (dbout > max_db) max_db = dbout;
-                //if (dbout < min_db) min_db = dbout;
+                    // populate byteFrequencyData
+                    const float dbMax = CONFIG.audio.max_db;
+                    const float dbMin = CONFIG.audio.min_db;
+                    const float dbRange = dbMax - dbMin;
 
-
-
-                // populate byteFrequencyData
-                const float dbMax = 0.f;
-                const float dbMin = -170.f;
-                const float dbRange = dbMax - dbMin;
-
-                float byteval = 255.f/dbRange * (dbout - dbMin);
-                byteFrequencyData[i] = (uint8_t)clamp(byteval, 0.f, 255.f);
-
-                float floatval = 1.f/dbRange * (dbout - dbMin);
-                fftOutputDb[i] = floatval;
+                    float floatval = 1.f / dbRange * (dbout - dbMin);
+                    Output[i] = floatval;
+                }
+                }
 			}
-
-            // print min/max
-            //_D("min_db: " << min_db << " max_db: " << max_db);
-
-            //TODO: USE DATA
-
 
             hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
             BREAK_ON_ERROR(hr);

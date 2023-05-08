@@ -22,7 +22,7 @@ class Window : public sf::RenderWindow
 public:
 							Window();
 
-	sf::View&				getSizedView();
+	sf::View				getSizedView();
 	void					updateSize();
 private:
 	WindowOrigin			m_viewOrigin;

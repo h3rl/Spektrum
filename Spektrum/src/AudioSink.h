@@ -45,18 +45,15 @@ private:
 	bool m_bInitialized = false;
 	bool m_bStopThread = false;
 
-public:
-
 	std::deque<float> m_rawmonodata;
 
 	float fftInput[FFT_SIZE] = {};
-
 	fftwf_plan fftPlan = nullptr;
 	fftwf_complex fftOutputComplex[FFT_SIZE_HALF] = {};
 	float fftOutput[FFT_SIZE_HALF] = {};
-	float fftOutputDb[FFT_SIZE_HALF] = {};
+public:
 
-	uint8_t byteFrequencyData[FFT_SIZE_HALF] = {};
+	float Output[FFT_SIZE_HALF] = {};
 
 	AudioSink();
 	~AudioSink();
@@ -74,5 +71,9 @@ private:
 	void release();
 	void releaseFFTW3();
 
+	// Windowing functions
+	void applyBlackman();
+	void applyHamming();
 
+	void applyDbConversion();
 };

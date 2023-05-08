@@ -72,19 +72,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)bin\$(Configuration)-$(Platform)\</OutDir>
-    <IntDir>$(SolutionDir)bin\binint\$(Configuration)-$(Platform)\</IntDir>
+    <IntDir>$(SolutionDir)bin\binint\$(Configuration)-$(Platform)-$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)bin\$(Configuration)-$(Platform)\</OutDir>
-    <IntDir>$(SolutionDir)bin\binint\$(Configuration)-$(Platform)\</IntDir>
+    <IntDir>$(SolutionDir)bin\binint\$(Configuration)-$(Platform)-$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)bin\$(Configuration)-$(Platform)\</OutDir>
-    <IntDir>$(SolutionDir)bin\binint\$(Configuration)-$(Platform)\</IntDir>
+    <IntDir>$(SolutionDir)bin\binint\$(Configuration)-$(Platform)-$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)bin\$(Configuration)-$(Platform)\</OutDir>
-    <IntDir>$(SolutionDir)bin\binint\$(Configuration)-$(Platform)\</IntDir>
+    <IntDir>$(SolutionDir)bin\binint\$(Configuration)-$(Platform)-$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -156,6 +156,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\AudioSink.cpp" />
+    <ClCompile Include="src\Config.cpp" />
     <ClCompile Include="src\EventHandler.cpp" />
     <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\Gui.cpp" />
@@ -167,7 +168,6 @@
   <ItemGroup>
     <ClInclude Include="src\AudioSink.h" />
     <ClInclude Include="src\Config.h" />
-    <ClInclude Include="src\Constants.h" />
     <ClInclude Include="src\EventHandler.h" />
     <ClInclude Include="src\App.h" />
     <ClInclude Include="src\Gui.h" />

@@ -4,8 +4,7 @@
 Scene::Scene() :
 	m_window(nullptr),
 	m_audiosink(nullptr),
-	m_pFloatData(nullptr),
-	m_pByteData(nullptr)
+	m_pData(nullptr)
 {
 }
 
@@ -13,14 +12,10 @@ void Scene::init(shared_ptr<Window> window, shared_ptr<AudioSink> audiosink)
 {
 	this->m_window = window;
 	this->m_audiosink = audiosink;
-	this->m_pFloatData = m_audiosink->fftOutput;
-	this->m_pByteData = m_audiosink->byteFrequencyData;
+	this->m_pData = m_audiosink->Output;
 
 	buildScene();
 }
-
-
-const int rectsCount = FFT_SIZE_HALF;
 
 void Scene::buildScene()
 {
@@ -43,6 +38,8 @@ void Scene::buildScene()
 	// make sure its emtpy
 	rects.clear();
 
+	const int rectsCount = CONFIG.audio.bar_count;
+
 	for (int i = 0; i < rectsCount; i++)
 	{
 		const float xpos = m_window->getSize().x * ((float)i / (rectsCount));
@@ -58,15 +55,24 @@ void Scene::buildScene()
 //TODO:finish
 void Scene::update(sf::Time dtTime)
 {
-	const float height = m_window->getSize().y * 7.f / 8.f;
-	const float width = m_window->getSize().x / rectsCount;
+	if (CONFIG.window.need_redraw)
+	{
+		buildScene();
+		CONFIG.window.need_redraw = false;
+	}
 
-	for (int i = 0; i < FFT_SIZE/2; i++)
+	sf::Vector2f windowSize = (sf::Vector2f)m_window->getSize();
+
+	const float height = windowSize.y * 7.f / 8.f;
+	const float width = windowSize.x / rects.size();
+
+	const float gain = CONFIG.audio.bar_gain;
+
+	for (int i = 0; i < rects.size(); i++)
 	{
 		sf::RectangleShape& r = rects[i];
 
-		const float barheight = m_audiosink->fftOutputDb[i]*height;
-		//const float barheight = m_audiosink->byteFrequencyData[i];
+		const float barheight = m_audiosink->Output[i]*height*gain;
 
 		r.setSize(sf::Vector2f(width, barheight));
 	}

@@ -8,6 +8,9 @@ App::App() :
 	m_bInitialized(false)
 {
 	_D("App constructor called");
+
+	CONFIG.Load();
+
 	Config::_Window& w = CONFIG.window;
 
 	sf::ContextSettings settings;
@@ -104,7 +107,7 @@ void App::processEvents()
 		case sf::Event::MouseWheelScrolled:
 		{
 			scrolldelta = evt.mouseWheelScroll.delta;
-			if (!CONFIG.in_gui)
+			if (!CONFIG.window.in_gui)
 				zoomViewAt({ evt.mouseWheelScroll.x, evt.mouseWheelScroll.y }, *m_window, scrolldelta);
 			break;
 		}
@@ -166,7 +169,7 @@ void App::processEvents()
 		}
 	}
 
-	if (!CONFIG.in_gui &&
+	if (!CONFIG.window.in_gui &&
 		sf::Keyboard::isKeyPressed(sf::Keyboard::LShift))
 	{
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
