@@ -38,5 +38,6 @@ Release/
 Debug/
 packages/
 *.cfg
+*.ini
 
 *.wav
