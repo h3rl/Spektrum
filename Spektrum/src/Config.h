@@ -1,41 +1,77 @@
 #pragma once
+#include "AudioSink.h"
+
 class Config
 {
 public:
+	Config() {};
+	Config(Config const&) = delete;
+	void operator=(Config const&) = delete;
+
     static Config& get()
     {
         static Config instance;
         return instance;
     }
 
+	void Save();
+	void Load();
+
+public:
+	struct _Gui
+	{
+		bool show_fps{ true };
+		bool show_menu{ true };
+	} gui;
+
 	struct _Window
 	{
-		int width{ 600 };
-		int height{ 400 };
+		int width{ 1600 };
+		int height{ 900 };
 		float zoom{ 1.0f };
+
+		bool fullscreen{ false };
+		bool vsync{ true };
 		int max_fps = 165;
 
-		bool bResized{ false };
+		bool in_gui{ false };
+		bool need_redraw{ false };
+
 	} window;
 
-	struct _App
+	struct _Audio
 	{
-		float speed{ 1.0f };
-		float particle_max_velocity{ 100.0f };
-		float gravity_constant{ 5.0f };
-	} App;
+		enum _AudioWindowFunction : int
+		{
+			None,
+			Blackman,
+			Hamming,
+			//Hann,
+			//Rectangle,
+			//Triangle,
+			//Welch,
+		} windowfunction{ Blackman };
 
-	struct _Config
-	{
-		bool load{ false };
-		bool save{ false };
-	}config;
+		int bar_count{ FFT_SIZE_HALF };
+		float bar_gain{ 1.0f };
+		float time_smoothing{ 0.5f };
+		float min_db{ -120.0f };
+		float max_db{ 0.0f };
+		float min_freq{ 20.0f }; 
+		float max_freq{ 20000.0f };
 
-	bool in_gui{ false };
+		enum _AudioBarStyle : int
+		{
+			Linear,
+			Db,
+		} barstyle{ Db };
+	} audio;
 
-    Config() {};
-    Config(Config const&) = delete;
-    void operator=(Config const&) = delete;
+	//struct _Config
+	//{
+	//	bool load{ false };
+	//	bool save{ false };
+	//}config;
 };
 
 #define CONFIG Config::get()
