@@ -48,6 +48,15 @@ bool AudioSink::initWASAPI()
     //pwaveformatex->nAvgBytesPerSec = pwaveformatex->nSamplesPerSec * pwaveformatex->nBlockAlign;
     //pwaveformatex->cbSize = 0;
 
+    _D("Samplerate: " << pwaveformatex->nSamplesPerSec);
+    _D("channelcount: " << pwaveformatex->nChannels);
+
+    if (pwaveformatex->nChannels != 2)
+    {
+		_D("Only stereo supported so far");
+        RETURN_ON_ERROR(-1);
+	}
+
     WAVEFORMATEX* pwfx = NULL;
 
     hr = pAudioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, pwaveformatex, &pwfx);
@@ -71,7 +80,7 @@ bool AudioSink::initWASAPI()
 
 bool AudioSink::initFFTW3()
 {
-    fftPlan = fftwf_plan_r2r_1d(FFT_SIZE, nullptr, nullptr, fftwf_r2r_kind::FFTW_R2HC, FFTW_ESTIMATE);
+    fftPlan = fftwf_plan_dft_r2c_1d(FFT_SIZE, this->fftInput, this->fftOutputComplex, 0);
     return true;
 }
 
@@ -160,36 +169,97 @@ void AudioSink::sinkthread()
             numFramesAvailable: 480
             bytesPerSamplePerChannel: 4
             */
-            if (bytesPerSamplePerChannel == 4) // float
-            {
-                float* pfData = (float*)pData;
-                ZeroMemory(fftInput, sizeof(float) * FFT_SIZE);
-                for (int i = 0; i < bufferSampleCount; i++)
-                {
-                    fftInput[i] = pfData[i];
-                }
-
-			}
-            else if (bytesPerSamplePerChannel == 2) // short
-            {
-                _D("short uniplemented");
-                BREAK_ON_ERROR(-1);
-			}
-            else if (bytesPerSamplePerChannel == 8) // double
+            if (bytesPerSamplePerChannel == 8) // double
             {
                 _D("double unimplemented");
                 BREAK_ON_ERROR(-1);
             }
+            else if (bytesPerSamplePerChannel == 4) // float
+            {
+                float* pfData = (float*)pData;
+                for (int i = 0; i < bufferSampleCount; i += 2)
+                {
+                    const float left = pfData[i];
+                    const float right = pfData[i + 1];
+                    const float monoval = 0.5f * (right + left); // average to create mono
+
+                    // keep track and limit the size of the raw data
+                    if (m_rawmonodata.size() >= FFT_SIZE)
+                    {
+                        m_rawmonodata.pop_front();
+                    }
+                    m_rawmonodata.push_back(monoval);
+                }
+
+            }
+            else if (bytesPerSamplePerChannel == 2) // short
+            {
+                _D("short uniplemented");
+                BREAK_ON_ERROR(-1);
+            }
+
+            // copy data from deque to fft input
+            std::copy(m_rawmonodata.begin(), m_rawmonodata.end(), fftInput);
+
+            // apply blackman window
+            const float alpha = 0.16f;
+            const float a0 = (1.f - alpha) / 2.f;
+            const float a1 = 0.5f;
+            const float a2 = alpha / 2.f;
+            for (int i = 0; i < FFT_SIZE; i++)
+            {
+                // Blackman window
+                const float wn = a0 - a1 * cos(2.f * (float)PI * i / FFT_SIZE) + a2 * cos(4.f * (float)PI * i / FFT_SIZE);
+
+                // apply window
+                fftInput[i] = fftInput[i] * wn;
+            }
+
+            // apply fft
+            fftwf_execute(fftPlan);
+
+            // fftOutputComplex is now populated with FFT_SIZE/2 complex numbers
+            // find magnitude, store in fftOutput
+
+            float max_db = -500.f;
+            float min_db = 0.f;
+
+            for (int i = 0; i < FFT_SIZE_HALF; i++)
+            {
+				const float real = fftOutputComplex[i][0];
+				const float imag = fftOutputComplex[i][1];
+				const float mag = sqrt(real * real + imag * imag);
+
+                // apply time smoothing
+                const float tau = 0.1f;
+				fftOutput[i] = tau*fftOutput[i] + (1.f-tau)*mag;
+
+                // calc db
+                const float dbout = 20.f * log10(fftOutput[i]);
+
+                // check for min/max
+                //if (dbout > max_db) max_db = dbout;
+                //if (dbout < min_db) min_db = dbout;
+
+
+
+                // populate byteFrequencyData
+                const float dbMax = 0.f;
+                const float dbMin = -170.f;
+                const float dbRange = dbMax - dbMin;
+
+                float byteval = 255.f/dbRange * (dbout - dbMin);
+                byteFrequencyData[i] = (uint8_t)clamp(byteval, 0.f, 255.f);
+
+                float floatval = 1.f/dbRange * (dbout - dbMin);
+                fftOutputDb[i] = floatval;
+			}
+
+            // print min/max
+            //_D("min_db: " << min_db << " max_db: " << max_db);
 
             //TODO: USE DATA
-            //for (int i = 0; i < inpsize; i++)
-            //{
-            //    // apply Hann window to reduce spectral leakage
-            //    fftInput[i] = fftInput[i] * (0.5f - 0.5f * cos(2.f * (float)PI * i / (FFT_SIZE - 1)));
-            //}
 
-            // Perform the forward FFT on the input buffer
-            fftwf_execute_r2r(fftPlan, fftInput, fftOutput);
 
             hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
             BREAK_ON_ERROR(hr);

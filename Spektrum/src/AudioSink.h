@@ -13,7 +13,7 @@
 #define REFTIMES_PER_MILLISEC  REFTIMES_PER_SEC/1000
 
 #define FFT_SIZE 1024
-#define FFT_SIZE_HALF FFT_SIZE/2+1
+#define FFT_SIZE_HALF FFT_SIZE/2
 #define SAMPLE_RATE 16000
 
 class AudioSink
@@ -37,7 +37,6 @@ private:
 	DWORD flags = 0;
 
 	// FFTW3 stuff
-	fftwf_plan fftPlan = nullptr;
 
 	BYTE* pData = NULL;
 
@@ -48,8 +47,16 @@ private:
 
 public:
 
+	std::deque<float> m_rawmonodata;
+
 	float fftInput[FFT_SIZE] = {};
-	float fftOutput[FFT_SIZE] = {};
+
+	fftwf_plan fftPlan = nullptr;
+	fftwf_complex fftOutputComplex[FFT_SIZE_HALF] = {};
+	float fftOutput[FFT_SIZE_HALF] = {};
+	float fftOutputDb[FFT_SIZE_HALF] = {};
+
+	uint8_t byteFrequencyData[FFT_SIZE_HALF] = {};
 
 	AudioSink();
 	~AudioSink();
@@ -66,4 +73,6 @@ private:
 
 	void release();
 	void releaseFFTW3();
+
+
 };

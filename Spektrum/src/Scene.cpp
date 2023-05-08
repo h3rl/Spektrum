@@ -1,18 +1,26 @@
 #include "Scene.h"
 #include "AudioSink.h"
 
-Scene::Scene()
+Scene::Scene() :
+	m_window(nullptr),
+	m_audiosink(nullptr),
+	m_pFloatData(nullptr),
+	m_pByteData(nullptr)
 {
-	m_window = nullptr;
-	m_audiosink = nullptr;
 }
 
 void Scene::init(shared_ptr<Window> window, shared_ptr<AudioSink> audiosink)
 {
 	this->m_window = window;
 	this->m_audiosink = audiosink;
+	this->m_pFloatData = m_audiosink->fftOutput;
+	this->m_pByteData = m_audiosink->byteFrequencyData;
+
 	buildScene();
 }
+
+
+const int rectsCount = FFT_SIZE_HALF;
 
 void Scene::buildScene()
 {
@@ -31,14 +39,13 @@ void Scene::buildScene()
 	//rects.push_back(r2);
 
 	const float wheight = m_window->getSize().y / 2.f;
-	const int arr_size = sizeof(m_audiosink->fftOutput) / sizeof(m_audiosink->fftOutput[0]);
 
 	// make sure its emtpy
 	rects.clear();
 
-	for (int i = 0; i < arr_size; i++)
+	for (int i = 0; i < rectsCount; i++)
 	{
-		const float xpos = m_window->getSize().x * ((float)i / (float)arr_size);
+		const float xpos = m_window->getSize().x * ((float)i / (rectsCount));
 		const float ypos = 0;// m_window->getSize().y * 1 / 8;
 
 		sf::RectangleShape r;
@@ -51,14 +58,17 @@ void Scene::buildScene()
 //TODO:finish
 void Scene::update(sf::Time dtTime)
 {
-	float wheight = m_window->getSize().y * 7.f / 8.f;
-	
-	const int arr_size = sizeof(m_audiosink->fftOutput) / sizeof(m_audiosink->fftOutput[0]);
+	const float height = m_window->getSize().y * 7.f / 8.f;
+	const float width = m_window->getSize().x / rectsCount;
 
-	for (int i = 0; i < arr_size; i++)
+	for (int i = 0; i < FFT_SIZE/2; i++)
 	{
 		sf::RectangleShape& r = rects[i];
-		r.setSize(sf::Vector2f(1, abs(m_audiosink->fftOutput[i] * wheight)));
+
+		const float barheight = m_audiosink->fftOutputDb[i]*height;
+		//const float barheight = m_audiosink->byteFrequencyData[i];
+
+		r.setSize(sf::Vector2f(width, barheight));
 	}
 }
 

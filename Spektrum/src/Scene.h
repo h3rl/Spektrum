@@ -18,6 +18,8 @@ public:
 
 private:
 	std::vector<sf::RectangleShape>	rects;
+	float* m_pFloatData;
+	uint8_t* m_pByteData;
 
 private:
 	shared_ptr<Window>	m_window;
