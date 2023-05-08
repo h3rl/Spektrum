@@ -21,7 +21,7 @@
 
 #include <fftw3.h>
 
-#include "Constants.h"
+#include "Config.h"
 
 using std::string;
 using std::shared_ptr;
@@ -32,5 +32,4 @@ using std::make_shared;
 #define _D(x) std::cout << x << std::endl;
 #define _DV(vec) _D(vec.x << " " << vec.y);
 #define clamp(v,mn,mx) ((v < mn) ? mn : (v > mx) ? mx : v);
-#define _TODO(x)
 #define _MBYERROR(x)
