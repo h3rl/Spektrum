@@ -10,4 +10,4 @@ vcpkg.exe install fftw3 imgui-sfml sfml thor
 
 This project is still in early development and more features are to come. Here is a preview of current version.
 
-<img src="./Spektrum/Assets/preview.png"/>
+<img src="./Spektrum/Assets/preview2.png"/>
