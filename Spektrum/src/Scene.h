@@ -3,7 +3,6 @@
 
 #include <vector>
 
-#include "Config.h"
 #include "AudioSink.h"
 
 class Scene : private sf::NonCopyable

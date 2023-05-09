@@ -1,8 +1,6 @@
 #pragma once
 #include "stdafx.h"
 
-#include "Config.h"
-
 class Gui : private sf::NonCopyable
 {
 public:

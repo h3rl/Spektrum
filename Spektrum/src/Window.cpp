@@ -36,8 +36,8 @@ void Window::updateSize()
 	const float wHeight = wSize.y;
 
 	// update config
-	CONFIG.window.height = wHeight;
-	CONFIG.window.width = wWidth;
+	config::window_height = wHeight;
+	config::window_width = wWidth;
 
 	// Correct axis
 	switch (this->m_viewAxis)

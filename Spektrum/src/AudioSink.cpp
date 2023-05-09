@@ -227,12 +227,12 @@ void AudioSink::sinkthread()
             // copy data from deque to fft input
             std::copy(m_rawmonodata.begin(), m_rawmonodata.end(), fftInput);
 
-            switch (CONFIG.audio.windowfunction)
+            switch (config::audio::windowfunction)
             {
-            case Config::_Audio::Blackman:
+            case Blackman:
                 this->applyBlackman();
 				break;
-            case Config::_Audio::Hamming:
+            case Hamming:
                 this->applyHamming();
                 break;
             default:
@@ -251,28 +251,28 @@ void AudioSink::sinkthread()
 				const float imag = fftOutputComplex[i][1];
 				const float mag = sqrt(real * real + imag * imag);
 
-                const float tau = CONFIG.audio.time_smoothing;
+                const float tau = config::audio::time_smoothing;
                 fftOutput[i] = tau * fftOutput[i] + (1.f - tau) * mag;
 
-                switch (CONFIG.audio.barstyle)
+                switch (config::audio::barstyle)
                 {
-                case Config::_Audio::Linear:
+                case Linear:
                 {
                     Output[i] = fftOutput[i];
                     break;
                 }
-                case Config::_Audio::Db:
+                case Db:
                 {
                     // calc db
                     const float dbout = 20.f * log10(fftOutput[i]);
 
                     // populate byteFrequencyData
-                    const float dbMax = CONFIG.audio.max_db;
-                    const float dbMin = CONFIG.audio.min_db;
+                    const float dbMax = config::audio::max_db;
+                    const float dbMin = config::audio::min_db;
                     const float dbRange = dbMax - dbMin;
 
                     float floatval = 1.f / dbRange * (dbout - dbMin);
-                    Output[i] = floatval;
+                    Output[i] = clamp(floatval,0.f,1.f);
                 }
                 }
 			}

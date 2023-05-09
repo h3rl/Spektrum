@@ -3,7 +3,6 @@
 
 #include "Window.h"
 #include "Scene.h"
-#include "Config.h"
 #include "Gui.h"
 #include "EventHandler.h"
 #include "AudioSink.h"

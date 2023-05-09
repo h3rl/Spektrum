@@ -45,7 +45,7 @@ void Gui::update(sf::Time dtTime)
 {
 	ImGui::SFML::Update(*m_window,dtTime);
 
-	CONFIG.window.in_gui = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
+	state::in_gui = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
 
 	m_fpsText.setString(std::to_string((int)( 1 / dtTime.asSeconds())));
 }
@@ -59,7 +59,7 @@ void Gui::render()
 	//ImGui::ShowDemoWindow();
 	ImGui::SFML::Render(*m_window);
 
-	if (CONFIG.gui.show_fps)
+	if (state::window_show_fps)
 	{
 		renderFpsText();
 	}
@@ -79,7 +79,7 @@ void Gui::renderFpsText()
 
 void Gui::renderMenuV1()
 {
-	if (!ImGui::Begin("Menu", &CONFIG.gui.show_menu, ImGuiWindowFlags_AlwaysAutoResize))
+	if (!ImGui::Begin("Menu", &state::window_show_menu, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::End();
 		return;
@@ -87,20 +87,21 @@ void Gui::renderMenuV1()
 
 	ImGui::SetWindowPos({ 10, 100 }, ImGuiCond_Once);
 
-	ImGui::Combo("Bar style", (int*)&CONFIG.audio.barstyle, "Magnitude\0Db\0\0");
+	ImGui::Combo("Bar style", (int*)&config::audio::barstyle, "Magnitude\0Db\0\0");
 
-	if (ImGui::SliderInt("Bar Count", &CONFIG.audio.bar_count, 1, FFT_SIZE_HALF, "%d"))
+	if (ImGui::SliderInt("Bar Count", &config::audio::bar_count, 1, FFT_SIZE_HALF, "%d"))
 	{
-		CONFIG.window.need_redraw = true;
+		state::window_needs_redraw = true;
 	}
 
-	ImGui::SliderFloat("TimeSmoothing", &CONFIG.audio.time_smoothing, 0.f, 1.0f, "%.2f");
+	ImGui::SliderFloat("TimeSmoothing", &config::audio::time_smoothing, 0.f, 1.0f, "%.2f");
 
-	ImGui::SliderFloat("Min Db", &CONFIG.audio.min_db, -300.f, CONFIG.audio.max_db, "%.2f");
-	ImGui::SliderFloat("Max Db", &CONFIG.audio.max_db, CONFIG.audio.min_db, 0.f, "%.2f");
+	ImGui::SliderFloat("Min Db", &config::audio::min_db, -300.f, config::audio::max_db, "%.2f");
+	ImGui::SliderFloat("Max Db", &config::audio::max_db, config::audio::min_db, 0.f, "%.2f");
 
-	ImGui::InputFloat("Bar Gain", &CONFIG.audio.bar_gain, 0.1f, 1.0f, "%.2f");
+	ImGui::InputFloat("Bar Gain", &config::audio::bar_gain, 0.1f, 1.0f, "%.2f");
 
+	ImGui::End();
 }
 
 void Gui::renderConfigWindow()
@@ -115,11 +116,11 @@ void Gui::renderConfigWindow()
 
 	if (ImGui::Button("Load config"))
 	{
-		CONFIG.Load();
+		config::Load();
 	}
 	if (ImGui::Button("Save config"))
 	{
-		CONFIG.Save();
+		config::Save();
 	}
 
 	ImGui::End();

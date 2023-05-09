@@ -9,18 +9,14 @@ App::App() :
 {
 	_D("App constructor called");
 
-	CONFIG.Load();
-
-	Config::_Window& w = CONFIG.window;
+	//config::Load();
 
 	sf::ContextSettings settings;
-	settings.antialiasingLevel = 8;
+	settings.antialiasingLevel = 4;
 	
-	m_window->create(sf::VideoMode(w.width, w.height), "App", sf::Style::Default, settings);
-	if (w.max_fps > 0)
-	{
-		m_window->setFramerateLimit(w.max_fps);
-	}
+	m_window->create(sf::VideoMode(config::window_width, config::window_height), "App", sf::Style::Default, settings);
+	m_window->setFramerateLimit(config::window_fps);
+
 
 	if (!m_gui.init(m_window))
 	{
@@ -107,7 +103,7 @@ void App::processEvents()
 		case sf::Event::MouseWheelScrolled:
 		{
 			scrolldelta = evt.mouseWheelScroll.delta;
-			if (!CONFIG.window.in_gui)
+			if (!state::in_gui)
 				zoomViewAt({ evt.mouseWheelScroll.x, evt.mouseWheelScroll.y }, *m_window, scrolldelta);
 			break;
 		}
@@ -169,7 +165,7 @@ void App::processEvents()
 		}
 	}
 
-	if (!CONFIG.window.in_gui &&
+	if (!state::in_gui &&
 		sf::Keyboard::isKeyPressed(sf::Keyboard::LShift))
 	{
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
