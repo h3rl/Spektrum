@@ -22,6 +22,7 @@ class Window : public sf::RenderWindow
 public:
 							Window();
 
+	bool					init();
 	sf::View				getSizedView();
 	void					updateSize();
 private:

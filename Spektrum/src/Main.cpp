@@ -8,11 +8,12 @@
 int main()
 {
     //hide window if not debug
-#ifndef _DEBUG
-    ShowWindow(GetConsoleWindow(), SW_HIDE);
-#else
+//#ifndef _DEBUG
+//    ShowWindow(GetConsoleWindow(), SW_HIDE);
+//#else
+//    ShowWindow(GetConsoleWindow(), SW_SHOW);
+//#endif
     ShowWindow(GetConsoleWindow(), SW_SHOW);
-#endif
 
     App app;
     app.run();

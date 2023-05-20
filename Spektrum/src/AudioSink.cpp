@@ -2,9 +2,13 @@
 
 #include "AudioSink.h"
 
-#define RETURN_ON_ERROR(hres) if (FAILED(hres)) { release(); return false; }
-#define BREAK_ON_ERROR(hres) if (FAILED(hres)) { break; }
-#define SAFE_RELEASE(ob) if ((ob) != NULL) { (ob)->Release(); (ob) = NULL; }
+#include <comdef.h>
+
+#define PRINT_COM_ERROR(hr) _com_error ___err(hr); LPCTSTR ___errMsg = ___err.ErrorMessage(); _D(___errMsg);
+
+
+#define RETURN_ON_ERROR(hres) if (FAILED(hres)) { PRINT_COM_ERROR(hres); return false; }
+#define BREAK_ON_ERROR(hres) if (FAILED(hres)) { PRINT_COM_ERROR(hres); break; }
 
 const CLSID CLSID_MMDeviceEnumerator = __uuidof(MMDeviceEnumerator);
 const IID IID_IMMDeviceEnumerator = __uuidof(IMMDeviceEnumerator);
@@ -13,15 +17,14 @@ const IID IID_IAudioCaptureClient = __uuidof(IAudioCaptureClient);
 
 AudioSink::AudioSink()
 {
-    _D("AudioSink constructor called");
 }
 
 AudioSink::~AudioSink()
 {
-    _D("AudioSink destructor called");
+    release();
 }
 
-bool AudioSink::initWASAPI()
+bool AudioSink::init()
 {
     HRESULT hr;
 
@@ -75,239 +78,244 @@ bool AudioSink::initWASAPI()
     // Calculate the actual duration of the allocated buffer.
     //hnsActualDuration = (double)REFTIMES_PER_SEC * bufferFrameCount / pwaveformatex->nSamplesPerSec;
 
-    return true;
-}
-
-bool AudioSink::initFFTW3()
-{
     fftPlan = fftwf_plan_dft_r2c_1d(FFT_SIZE, this->fftInput, this->fftOutputComplex, 0);
-    return true;
-}
 
-void AudioSink::releaseFFTW3()
-{
-    if (fftPlan)
-    {
-        fftwf_destroy_plan(fftPlan);
-    }
-}
-
-void AudioSink::applyBlackman()
-{
-    const float alpha = 0.16f;
-    const float a0 = (1.f - alpha) / 2.f;
-    const float a1 = 0.5f;
-    const float a2 = alpha / 2.f;
-    for (int i = 0; i < FFT_SIZE; i++)
-    {
-        // Blackman window
-        const float wn = a0 - a1 * cos(2.f * (float)PI * i / FFT_SIZE) + a2 * cos(4.f * (float)PI * i / FFT_SIZE);
-
-        // apply window
-        fftInput[i] = fftInput[i] * wn;
-    }
-}
-void AudioSink::applyHamming()
-{
-    for (int i = 0; i < FFT_SIZE; i++)
-    {
-        // Hamming window
-        const float wn = 0.54f - 0.46f * cos(2.f * (float)PI * i / FFT_SIZE);
-        
-        // apply window
-        fftInput[i] = fftInput[i] * wn;
-    }
-}
-
-bool AudioSink::init()
-{
-    if (!this->initWASAPI())
-    {
-        return false;
-    }
-
-    if (!this->initFFTW3())
-    {
-        return false;
-    }
-
-    this->m_bStopThread = false;
+    //this->m_bStopThread = false;
 
     // Start recording.
     hr = pAudioClient->Start();
     RETURN_ON_ERROR(hr);
 
     // Begin thread to write data to buffer
-    thread = std::thread(&AudioSink::sinkthread, this);
+    //thread = std::thread(&AudioSink::sinkthread, this);
 
     this->m_bInitialized = true;
 
     return true;
 }
 
-void AudioSink::sinkthread()
+#define N (FFT_SIZE - 1)
+void AudioSink::applyWindowing()
 {
-    const int bytesPerSamplePerChannel = pwaveformatex->wBitsPerSample / 8;
-    const int bytesPerSample = bytesPerSamplePerChannel * pwaveformatex->nChannels;
+    const AudioWindowFunction wf = config::audio::windowfunction;
+    float* data = this->fftInput;
 
-    //_D("Bytes per sample per channel: " << bytesPerSamplePerChannel);
-
-
-
-    while (!m_bStopThread)
+    if (wf == AudioWindowFunction::None || wf == AudioWindowFunction::Rect)
     {
-        // Sleep for half the buffer duration.
-        //Sleep(hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
-        try
+        return;
+    }
+    else if (wf == AudioWindowFunction::Blackman)
+    {
+        static const float a0 = 0.42f;
+        static const float a1 = 0.5f;
+        static const float a2 = 0.08f;
+        for (int i = 0; i < FFT_SIZE; i++)
         {
-            hr = pCaptureClient->GetNextPacketSize(&packetLength);
-            BREAK_ON_ERROR(hr);
-
-            if (packetLength == 0)
-            {
-                continue;
-            }
-
-            // Get the available data in the shared buffer.
-            hr = pCaptureClient->GetBuffer(&pData, &numFramesAvailable, &flags, NULL, NULL);
-            BREAK_ON_ERROR(hr);
-
-            if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
-            {
-                pData = NULL;  // Tell CopyData to write silence.
-                break;
-            }
-
-            //_D("Num frames available: " << numFramesAvailable);
-            const int bufferSampleCount = numFramesAvailable * pwaveformatex->nChannels;
-
-            // NOTE:
-            // audioframe = samplesizeinbytes * numberofchannels
-
-            //std::cout << "bytesPerSamplePerChannel: " << bytesPerSamplePerChannel << std::endl;
-            //std::cout << "bytesPerSample: " << bytesPerSample << std::endl;
-            //std::cout << "bufferSampleCount: " << bufferSampleCount << std::endl;
-            //std::cout << "numFramesAvailable: " << numFramesAvailable << std::endl;
-            //std::cout << "waveformat" << pwaveformatex->wFormatTag << std::endl;
-            /*
-            bytesPerSample: 8
-            bufferSampleCount: 960
-            numFramesAvailable: 480
-            bytesPerSamplePerChannel: 4
-            */
-            if (bytesPerSamplePerChannel == 8) // double
-            {
-                _D("double unimplemented");
-                BREAK_ON_ERROR(-1);
-            }
-            else if (bytesPerSamplePerChannel == 4) // float
-            {
-                float* pfData = (float*)pData;
-                for (int i = 0; i < bufferSampleCount; i += 2)
-                {
-                    const float left = pfData[i];
-                    const float right = pfData[i + 1];
-                    const float monoval = 0.5f * (right + left); // average to create mono
-
-                    // keep track and limit the size of the raw data
-                    if (m_rawmonodata.size() >= FFT_SIZE)
-                    {
-                        m_rawmonodata.pop_front();
-                    }
-                    m_rawmonodata.push_back(monoval);
-                }
-
-            }
-            else if (bytesPerSamplePerChannel == 2) // short
-            {
-                _D("short uniplemented");
-                BREAK_ON_ERROR(-1);
-            }
-
-            // copy data from deque to fft input
-            std::copy(m_rawmonodata.begin(), m_rawmonodata.end(), fftInput);
-
-            switch (config::audio::windowfunction)
-            {
-            case Blackman:
-                this->applyBlackman();
-				break;
-            case Hamming:
-                this->applyHamming();
-                break;
-            default:
-                break;
-            }
-
-            // apply fft
-            fftwf_execute(fftPlan);
-
-            // fftOutputComplex is now populated with FFT_SIZE/2 complex numbers
-            // find magnitude, store in fftOutput, apply time smoothing
-
-            for (int i = 0; i < FFT_SIZE_HALF; i++)
-            {
-				const float real = fftOutputComplex[i][0];
-				const float imag = fftOutputComplex[i][1];
-				const float mag = sqrt(real * real + imag * imag);
-
-                const float tau = config::audio::time_smoothing;
-                fftOutput[i] = tau * fftOutput[i] + (1.f - tau) * mag;
-
-                switch (config::audio::barstyle)
-                {
-                case Linear:
-                {
-                    Output[i] = fftOutput[i];
-                    break;
-                }
-                case Db:
-                {
-                    // calc db
-                    const float dbout = 20.f * log10(fftOutput[i]);
-
-                    // populate byteFrequencyData
-                    const float dbMax = config::audio::max_db;
-                    const float dbMin = config::audio::min_db;
-                    const float dbRange = dbMax - dbMin;
-
-                    float floatval = 1.f / dbRange * (dbout - dbMin);
-                    Output[i] = clamp(floatval,0.f,1.f);
-                }
-                }
-			}
-
-            hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
-            BREAK_ON_ERROR(hr);
+            data[i] *= a0 - a1 * cos(2.f * PIf * i / N) + a2 * cos(4.f * PIf * i / N);
         }
-        catch (const std::exception&)
+
+    }
+    else if (wf == AudioWindowFunction::Hamming)
+    {
+        for (int i = 0; i < FFT_SIZE; i++)
         {
-            _D("Error: " << GetLastError());
-            break;
+            data[i] *= 0.54f - 0.46f * cosf(2 * PIf * i / N);
         }
     }
-}
+    else if (wf == AudioWindowFunction::Hann)
+    {
+        for (int i = 0; i < FFT_SIZE; i++)
+        {
+            data[i] *= 0.5f - 0.5f * cosf(2 * PIf * i / N);
+        }
+    }
+    else if (wf == AudioWindowFunction::Triangle)
+    {
+        for (int i = 0; i < FFT_SIZE; i++)
+        {
+            data[i] *= 1.f - fabsf(2.f * (i - 0.5f * N) / N);
+        }
+    }
+    else if (wf == AudioWindowFunction::Welch)
+    {
+        for (int i = 0; i < FFT_SIZE; i++)
+        {
+            data[i] *= 1.f - powf((i - N / 2.f) / (N / 2.f), 2.f);
+        }
+    }
+    else if (wf == AudioWindowFunction::FlatTop)
+    {
+        static const float a0 = 0.21557895f;
+        static const float a1 = 0.41663158f;
+        static const float a2 = 0.277263158f;
+        static const float a3 = 0.083578947f;
+        static const float a4 = 0.006947368f;
 
-void AudioSink::stop()
+        for (int i = 0; i < FFT_SIZE; i++)
+        {
+            data[i] *= a0 - a1 * cosf(2 * PIf * i / N) + a2 * cosf(4 * PIf * i / N) - a3 * cosf(6 * PIf * i / N) + a4 * cosf(8 * PIf * i / N);
+        }
+    }
+    else if (wf == AudioWindowFunction::BlackmanHarris)
+    {
+        static const float a0 = 0.35875f;
+        static const float a1 = 0.48829f;
+        static const float a2 = 0.14128f;
+        static const float a3 = 0.01168f;
+        for (int i = 0; i < FFT_SIZE; i++)
+        {
+            data[i] *= a0 - a1 * cosf(2 * PIf * i / N) + a2 * cosf(4 * PIf * i / N) - a3 * cosf(6 * PIf * i / N);
+        }
+    }
+    else
+    {
+        _D("Unknown window function");
+    }
+}
+#undef N
+
+void AudioSink::update()
 {
     if (!m_bInitialized) return;
 
-    m_bStopThread = true;
-    m_bInitialized = false;
-    
-    // wait for thread to finish
-    // thread calls release() and stops recording
-    thread.join();
 
-    release();
+    const int bytesPerSamplePerChannel = pwaveformatex->wBitsPerSample / 8;
+    const int bytesPerSample = bytesPerSamplePerChannel * pwaveformatex->nChannels;
+
+    bool bufferCleared = false;
+
+    while (true)
+    {
+        // get next packet
+        hr = pCaptureClient->GetNextPacketSize(&packetLength);
+        BREAK_ON_ERROR(hr);
+
+        if (packetLength == 0)
+        {
+			break;
+		}
+
+        // Sleep for half the buffer duration.
+        //Sleep(hnsActualDuration / REFTIMES_PER_MILLISEC / 2);
+
+        // Get the available data in the shared buffer.
+        hr = pCaptureClient->GetBuffer(&pData, &numFramesAvailable, &flags, NULL, NULL);
+        bufferCleared = false;
+        BREAK_ON_ERROR(hr);
+
+        if (flags & 0b111)
+        {
+            pData = NULL;  // Tell CopyData to write silence.
+            break;
+        }
+
+        //_D("Num frames available: " << numFramesAvailable);
+        const int bufferSampleCount = numFramesAvailable * pwaveformatex->nChannels;
+
+        // NOTE:
+        // audioframe = samplesizeinbytes * numberofchannels
+
+        //std::cout << "bytesPerSamplePerChannel: " << bytesPerSamplePerChannel << std::endl;
+        //std::cout << "bytesPerSample: " << bytesPerSample << std::endl;
+        //std::cout << "bufferSampleCount: " << bufferSampleCount << std::endl;
+        //std::cout << "numFramesAvailable: " << numFramesAvailable << std::endl;
+        //std::cout << "waveformat" << pwaveformatex->wFormatTag << std::endl;
+        /*
+        bytesPerSample: 8
+        bufferSampleCount: 960
+        numFramesAvailable: 480
+        bytesPerSamplePerChannel: 4
+        */
+
+        if (bytesPerSamplePerChannel != 4)
+        {
+            _D("Unimplemented sample size: " << bytesPerSamplePerChannel << " byte value");
+            return;
+        }
+
+        float* pfData = (float*)pData;
+        for (int i = 0; i < bufferSampleCount; i += 4)
+        {
+            const float downsampled = 0.25f * (pfData[i] + pfData[i + 1] + pfData[i + 2] + pfData[i + 3]); // average to create mono
+            m_rawmonodata.push_front(downsampled);
+        }
+
+        // copy data from deque to fft input
+        std::copy(m_rawmonodata.begin(), m_rawmonodata.end(), fftInput);
+
+        applyWindowing();
+
+        // apply fft
+        fftwf_execute(fftPlan);
+
+        // fftOutputComplex is now populated with FFT_SIZE/2 complex numbers
+        // find magnitude, store in fftOutput, apply time smoothing
+
+        for (int i = 0; i < FFT_SIZE_HALF; i++)
+        {
+            const float real = fftOutputComplex[i][0];
+            const float imag = fftOutputComplex[i][1];
+            const float mag = sqrt(real * real + imag * imag);
+
+            const float tau = config::audio::time_smoothing;
+            fftOutput[i] = tau * fftOutput[i] + (1.f - tau) * mag;
+
+            switch (config::audio::barstyle)
+            {
+            case Linear:
+            {
+                Output[i] = fftOutput[i];
+                break;
+            }
+            case Logarithmic:
+            {
+                // calc db
+                const float dbout = 20.f * log10(fftOutput[i]);
+
+                // populate byteFrequencyData
+                const float dbMax = config::audio::max_db;
+                const float dbMin = config::audio::min_db;
+                const float dbRange = dbMax - dbMin;
+
+                float floatval = 1.f / dbRange * (dbout - dbMin);
+                Output[i] = clamp(floatval, 0.f, 1.f);
+            }
+            }
+        }
+
+        hr = pCaptureClient->ReleaseBuffer(numFramesAvailable);
+        BREAK_ON_ERROR(hr);
+
+        bufferCleared = true;
+    }
+
+    if (!bufferCleared)
+    {
+        // clear buffer
+		pCaptureClient->ReleaseBuffer(numFramesAvailable);
+    }
+
+
 }
+
+#define SAFE_RELEASE(ob) if (ob) { (ob)->Release(); ob = nullptr; }
 
 void AudioSink::release()
 {
+    if(!m_bInitialized) return;
+    m_bInitialized = false;
+
+    if (fftPlan)
+    {
+        fftwf_destroy_plan(fftPlan);
+        fftPlan = nullptr;
+    }
+
     CoTaskMemFree(pwaveformatex);
     SAFE_RELEASE(pDeviceEnumerator);
     SAFE_RELEASE(pDevice);
     SAFE_RELEASE(pAudioClient);
     SAFE_RELEASE(pCaptureClient);
     CoUninitialize();
+
 }

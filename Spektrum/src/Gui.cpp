@@ -52,9 +52,7 @@ void Gui::update(sf::Time dtTime)
 
 void Gui::render()
 {
-	//renderTestWindow();
 	renderMenuV1();
-	renderConfigWindow();
 
 	//ImGui::ShowDemoWindow();
 	ImGui::SFML::Render(*m_window);
@@ -78,35 +76,8 @@ void Gui::renderFpsText()
 }
 
 void Gui::renderMenuV1()
-{
-	if (!ImGui::Begin("Menu", &state::window_show_menu, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		ImGui::End();
-		return;
-	}
-
-	ImGui::SetWindowPos({ 10, 100 }, ImGuiCond_Once);
-
-	ImGui::Combo("Bar style", (int*)&config::audio::barstyle, "Magnitude\0Db\0\0");
-
-	if (ImGui::SliderInt("Bar Count", &config::audio::bar_count, 1, FFT_SIZE_HALF, "%d"))
-	{
-		state::window_needs_redraw = true;
-	}
-
-	ImGui::SliderFloat("TimeSmoothing", &config::audio::time_smoothing, 0.f, 1.0f, "%.2f");
-
-	ImGui::SliderFloat("Min Db", &config::audio::min_db, -300.f, config::audio::max_db, "%.2f");
-	ImGui::SliderFloat("Max Db", &config::audio::max_db, config::audio::min_db, 0.f, "%.2f");
-
-	ImGui::InputFloat("Bar Gain", &config::audio::bar_gain, 0.1f, 1.0f, "%.2f");
-
-	ImGui::End();
-}
-
-void Gui::renderConfigWindow()
-{
-	if (!ImGui::Begin("Config", 0, ImGuiWindowFlags_AlwaysAutoResize))
+{	
+	if (!ImGui::Begin("GUI", &state::window_show_menu, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::End();
 		return;
@@ -114,6 +85,62 @@ void Gui::renderConfigWindow()
 
 	ImGui::SetWindowPos({ 10, 10 }, ImGuiCond_Once);
 
+	if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_None))
+	{
+		if (ImGui::BeginTabItem("Menu"))
+		{
+			// MAIN START
+			renderTabMain();
+			// MAIN END
+
+			ImGui::EndTabItem();
+		}
+		if (ImGui::BeginTabItem("Graphics"))
+		{
+			// GRAPHICS START
+			renderTabGraphics();
+			// GRAPHICS END
+
+			ImGui::EndTabItem();
+		}
+		if (ImGui::BeginTabItem("Config"))
+		{
+			// CONFIG START
+			renderTabConfig();
+			// CONFIG END
+
+			ImGui::EndTabItem();
+		}
+		ImGui::EndTabBar();
+	}
+
+	ImGui::End();
+}
+
+void Gui::renderTabMain()
+{
+	ImGui::Combo("Bar style", (int*)&config::audio::barstyle, "Linear\0Logarithmic\0\0");
+
+	if (ImGui::SliderInt("Bar Count", &config::audio::bar_count, 1, FFT_SIZE_HALF, "%d"))
+	{
+		state::window_needs_redraw = true;
+	}
+	ImGui::InputFloat("Bar Gain", &config::audio::bar_gain, 0.1f, 1.0f, "%.2f");
+
+
+	if (ImGui::InputFloat("Minimum Db", &config::audio::min_db, -100.f, config::audio::max_db, "%.2f"))
+	{
+		config::audio::min_db = clamp(config::audio::min_db, -std::numeric_limits<float>::infinity(), config::audio::max_db);
+	}
+	if (ImGui::InputFloat("Maximum Db", &config::audio::max_db, config::audio::min_db, 25.f, "%.2f"))
+	{
+		config::audio::max_db = clamp(config::audio::max_db, config::audio::min_db, 25.0f);
+	}
+
+	ImGui::SliderFloat("Time Smoothing", &config::audio::time_smoothing, 0.f, 1.0f, "%.2f");
+}
+void Gui::renderTabConfig()
+{
 	if (ImGui::Button("Load config"))
 	{
 		config::Load();
@@ -123,17 +150,21 @@ void Gui::renderConfigWindow()
 		config::Save();
 	}
 
-	ImGui::End();
+	ImGui::Checkbox("Load config at startup", &config::load_config_on_startup);
+
 }
-
-void Gui::renderTestWindow()
+void Gui::renderTabGraphics()
 {
-	if (!ImGui::Begin("Test", 0, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::Checkbox("Enable VSync (not recommended)", &config::graphics::vsync))
 	{
-		ImGui::End();
-		return;
+		m_window->setVerticalSyncEnabled(config::graphics::vsync);
 	}
-	ImGui::SetWindowPos({ 10,10 }, ImGuiCond_Once);
 
-	ImGui::End();
+	if (!config::graphics::vsync)
+	{
+		if (ImGui::InputInt("FPS Limit", &config::graphics::framerate_limit, 0, 10))
+		{
+			m_window->setFramerateLimit(config::graphics::framerate_limit);
+		}
+	}
 }

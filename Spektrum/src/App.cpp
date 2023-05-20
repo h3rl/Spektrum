@@ -9,14 +9,16 @@ App::App() :
 {
 	_D("App constructor called");
 
-	//config::Load();
-
-	sf::ContextSettings settings;
-	settings.antialiasingLevel = 4;
+	if (config::LoadOnStartup())
+	{
+		config::Load();
+	}
 	
-	m_window->create(sf::VideoMode(config::window_width, config::window_height), "App", sf::Style::Default, settings);
-	m_window->setFramerateLimit(config::window_fps);
-
+	if (!m_window->init())
+	{
+		return;
+	}
+	
 
 	if (!m_gui.init(m_window))
 	{
@@ -30,8 +32,6 @@ App::App() :
 		return;
 	}
 
-	m_window->updateSize();
-
 	m_scene.init(m_window, m_audiosink);
 
 	m_bInitialized = true;
@@ -39,10 +39,7 @@ App::App() :
 
 App::~App()
 {
-	_D("App destructor called");
 }
-
-
 
 void App::run()
 {
@@ -61,8 +58,6 @@ void App::run()
 		update(elapsedTime);
 		render();
 	}
-	m_audiosink->stop();
-	_D("Audiosink stopped");
 }
 
 sf::Vector2i oldpos, pos;
@@ -182,6 +177,8 @@ void App::processEvents()
 
 void App::update(sf::Time dtTime)
 {
+	m_audiosink->update();
+
 	m_scene.update(dtTime);
 
 	m_gui.update(dtTime);

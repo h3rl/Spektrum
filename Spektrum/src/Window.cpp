@@ -8,6 +8,30 @@ m_viewOrigin(WindowOrigin::BottomLeft)
 
 }
 
+bool Window::init()
+{
+	sf::ContextSettings settings;
+	settings.antialiasingLevel = config::graphics::antialiasing_level;
+
+	this->create(sf::VideoMode(config::window_width, config::window_height), "App", sf::Style::Default, settings);
+
+	if (config::graphics::vsync)
+	{
+		this->setVerticalSyncEnabled(true);
+	}
+	else
+	{
+		this->setVerticalSyncEnabled(false);
+		this->setFramerateLimit(config::graphics::framerate_limit);
+	}
+
+	_D("window set");
+
+	this->updateSize();
+
+	return true;
+}
+
 sf::View Window::getSizedView()
 {
 	sf::View view = this->getDefaultView();

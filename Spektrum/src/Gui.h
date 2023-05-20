@@ -17,8 +17,9 @@ private:
 
 	void					renderMenuV1();
 
-	void					renderConfigWindow();
-	void					renderTestWindow();
+	void					renderTabMain();
+	void					renderTabConfig();
+	void					renderTabGraphics();
 private:
 
 	shared_ptr<Window>		m_window;

@@ -9,6 +9,8 @@
 #include <iostream>
 #include <thread>
 
+#include <boost/circular_buffer.hpp>
+
 #define REFTIMES_PER_SEC  10000000
 #define REFTIMES_PER_MILLISEC  REFTIMES_PER_SEC/1000
 
@@ -25,11 +27,11 @@ private:
 	REFERENCE_TIME hnsActualDuration;
 	UINT32 bufferFrameCount;
 	UINT32 numFramesAvailable;
-	IMMDeviceEnumerator* pDeviceEnumerator = NULL;
-	IMMDevice* pDevice = NULL;
-	IAudioClient* pAudioClient = NULL;
-	IAudioCaptureClient* pCaptureClient = NULL;
-	WAVEFORMATEX* pwaveformatex = NULL;
+	IMMDeviceEnumerator* pDeviceEnumerator = nullptr;
+	IMMDevice* pDevice = nullptr;
+	IAudioClient* pAudioClient = nullptr;
+	IAudioCaptureClient* pCaptureClient = nullptr;
+	WAVEFORMATEX* pwaveformatex = nullptr;
 	UINT32 packetLength = 0;
 
 	MMCKINFO chunkRiff = { 0 };
@@ -38,14 +40,14 @@ private:
 
 	// FFTW3 stuff
 
-	BYTE* pData = NULL;
+	BYTE* pData = nullptr;
 
 	std::thread thread;
 
 	bool m_bInitialized = false;
 	bool m_bStopThread = false;
 
-	std::deque<float> m_rawmonodata;
+	boost::circular_buffer<float> m_rawmonodata{ FFT_SIZE };
 
 	float fftInput[FFT_SIZE] = {};
 	fftwf_plan fftPlan = nullptr;
@@ -59,21 +61,12 @@ public:
 	~AudioSink();
 
 	bool init();
-	void stop();
+
+	void update();
 
 private:
 
-	void sinkthread();
-
-	bool initWASAPI();
-	bool initFFTW3();
-
 	void release();
-	void releaseFFTW3();
 
-	// Windowing functions
-	void applyBlackman();
-	void applyHamming();
-
-	void applyDbConversion();
+	void applyWindowing();
 };

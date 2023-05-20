@@ -41,8 +41,6 @@ void Scene::buildScene()
 	// make sure its emtpy
 	rects.clear();
 
-	m_window->setFramerateLimit(config::window_fps);
-
 	const int rectsCount = config::audio::bar_count;
 
 	for (int i = 0; i < rectsCount; i++)
