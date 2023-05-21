@@ -5,7 +5,7 @@ Audiovisualizer using ffts and other soundprocessing, computer audio is captured
 To use, download dependencies using vcpkg. following packages are used and required to build:
 
 ```
-vcpkg.exe install fftw3 imgui-sfml sfml thor
+vcpkg.exe install fftw3 imgui-sfml sfml thor boost-circular-buffer
 ```
 
 This project is still in early development and more features are to come. Here is a preview of current version.
