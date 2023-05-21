@@ -138,6 +138,8 @@ void Gui::renderTabMain()
 	}
 
 	ImGui::SliderFloat("Time Smoothing", &config::audio::time_smoothing, 0.f, 1.0f, "%.2f");
+
+	ImGui::Combo("FFT Windowingfunction", (int*)&config::audio::windowfunction, AudioWindowFunctionCombo);
 }
 void Gui::renderTabConfig()
 {
