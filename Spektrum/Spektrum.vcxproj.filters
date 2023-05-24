@@ -65,4 +65,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Assets\radial_gradient.frag" />
+  </ItemGroup>
 </Project>
