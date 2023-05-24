@@ -102,3 +102,13 @@ void Window::updateSize()
 
 	this->setView(view);
 }
+
+sf::Vector2f Window::getCenter()
+{
+	return this->getSizef() / 2.f;
+}
+
+sf::Vector2f Window::getSizef()
+{
+	return (sf::Vector2f)this->getSize();
+}

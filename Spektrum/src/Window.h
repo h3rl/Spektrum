@@ -25,6 +25,8 @@ public:
 	bool					init();
 	sf::View				getSizedView();
 	void					updateSize();
+	sf::Vector2f			getCenter();
+	sf::Vector2f			getSizef();
 private:
 	WindowOrigin			m_viewOrigin;
 	WindowAxis				m_viewAxis;
