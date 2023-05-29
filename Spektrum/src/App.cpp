@@ -175,9 +175,11 @@ void App::processEvents()
 	scrolldelta = 0.0f;
 }
 
-void App::update(sf::Time dtTime)
+void App::update(const sf::Time& dtTime)
 {
-	m_audiosink->update();
+	m_gui.preupdate();
+
+	m_audiosink->update(dtTime);
 
 	m_scene.update(dtTime);
 

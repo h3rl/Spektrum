@@ -12,6 +12,10 @@ namespace state
     extern bool window_show_fps{ true };
     extern bool window_show_menu{ true };
     extern bool window_show_config{ false };
+
+    extern int audio_samplerate{ 0 };
+
+    extern std::vector<std::string> debug_textvec{};
 }
 
 namespace config
@@ -38,6 +42,9 @@ namespace config
         extern float max_db{ 0.0f };
         extern float min_freq{ 20.0f };
         extern float max_freq{ 20000.0f };
+
+        extern float bass_threshold_a{ -15.f };
+        extern float bass_threshold_b{ 1.55f };
     }
 
 
@@ -75,6 +82,9 @@ namespace config
         CONFIG_SAVE(audio::max_db);
         CONFIG_SAVE(audio::min_freq);
         CONFIG_SAVE(audio::max_freq);
+
+        CONFIG_SAVE(audio::bass_threshold_a);
+        CONFIG_SAVE(audio::bass_threshold_b);
     }
 #undef CONFIG_SAVE
 #undef CONFIG_SAVE_ENUM
@@ -117,6 +127,9 @@ namespace config
                 CONFIG_LOAD(audio::max_db);
                 CONFIG_LOAD(audio::min_freq);
                 CONFIG_LOAD(audio::max_freq);
+
+                CONFIG_LOAD(audio::bass_threshold_a);
+                CONFIG_LOAD(audio::bass_threshold_b);
             }
         }
         file.close();
@@ -127,8 +140,11 @@ namespace config
         audio::time_smoothing = clamp(audio::time_smoothing, 0.0f, 1.0f);
         audio::max_db = clamp(audio::max_db, audio::min_db, 25.0f);
         audio::min_db = clamp(audio::min_db, -std::numeric_limits<float>::infinity(), audio::max_db);
-        audio::max_freq = clamp(audio::max_freq, audio::min_freq, 20000.0f);
+        audio::max_freq = clamp(audio::max_freq, audio::min_freq, std::numeric_limits<float>::infinity());
         audio::min_freq = clamp(audio::min_freq, 0.0f, audio::max_freq);
+
+        audio::min_freq = clamp(audio::min_freq, 0, config::audio::max_freq);
+        audio::max_freq = clamp(audio::max_freq, config::audio::min_freq, std::numeric_limits<float>::infinity());
 
         // request redraw
         state::window_needs_redraw = true;

@@ -14,9 +14,12 @@
 #define REFTIMES_PER_SEC  10000000
 #define REFTIMES_PER_MILLISEC  REFTIMES_PER_SEC/1000
 
-#define FFT_SIZE 2048
+// 10 -> 1024
+// 11 -> 2048
+// 12 -> 4096
+// 13 -> 8192
+#define FFT_SIZE (int)(1 << 12)
 #define FFT_SIZE_HALF FFT_SIZE/2
-#define SAMPLE_RATE 16000
 
 class AudioSink
 {
@@ -53,8 +56,8 @@ private:
 	fftwf_plan fftPlan = nullptr;
 	fftwf_complex fftOutputComplex[FFT_SIZE_HALF] = {};
 	float fftOutput[FFT_SIZE_HALF] = {};
-public:
 
+public:
 	float Output[FFT_SIZE_HALF] = {};
 
 	AudioSink();
@@ -62,7 +65,9 @@ public:
 
 	bool init();
 
-	void update();
+	void update(const sf::Time& dtTime);
+
+	float getFreqPerSample();
 
 private:
 

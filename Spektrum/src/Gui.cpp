@@ -11,6 +11,11 @@ Gui::~Gui()
 	ImGui::SFML::Shutdown();
 }
 
+void Gui::preupdate()
+{
+	state::debug_textvec.clear();
+}
+
 bool Gui::init(shared_ptr<Window> window)
 {
 	if (!window)
@@ -41,7 +46,7 @@ bool Gui::init(shared_ptr<Window> window)
 	return true;
 }
 
-void Gui::update(sf::Time dtTime)
+void Gui::update(const sf::Time& dtTime)
 {
 	ImGui::SFML::Update(*m_window,dtTime);
 
@@ -111,6 +116,14 @@ void Gui::renderMenuV1()
 
 			ImGui::EndTabItem();
 		}
+		if (ImGui::BeginTabItem("Debug"))
+		{
+			// DEBUG START
+			renderTabDebug();
+			// DEBUG END
+
+			ImGui::EndTabItem();
+		}
 		ImGui::EndTabBar();
 	}
 
@@ -128,18 +141,34 @@ void Gui::renderTabMain()
 	ImGui::InputFloat("Bar Gain", &config::audio::bar_gain, 0.1f, 1.0f, "%.2f");
 
 
-	if (ImGui::InputFloat("Minimum Db", &config::audio::min_db, -100.f, config::audio::max_db, "%.2f"))
+	if (ImGui::InputFloat("Min Db", &config::audio::min_db, 0.1f, 1.0f, "%.2f"))
 	{
 		config::audio::min_db = clamp(config::audio::min_db, -std::numeric_limits<float>::infinity(), config::audio::max_db);
 	}
-	if (ImGui::InputFloat("Maximum Db", &config::audio::max_db, config::audio::min_db, 25.f, "%.2f"))
+	if (ImGui::InputFloat("Max Db", &config::audio::max_db, 0.1f, 1.0f, "%.2f"))
 	{
 		config::audio::max_db = clamp(config::audio::max_db, config::audio::min_db, 25.0f);
 	}
 
-	ImGui::SliderFloat("Time Smoothing", &config::audio::time_smoothing, 0.f, 1.0f, "%.2f");
+	if (ImGui::InputFloat("Time Smoothing", &config::audio::time_smoothing, 0.1f, 1.0f, "%.3f"))
+	{
+		config::audio::time_smoothing = std::max(config::audio::time_smoothing, 0.f);
+	}
 
 	ImGui::Combo("FFT Windowingfunction", (int*)&config::audio::windowfunction, AudioWindowFunctionCombo);
+
+	if (ImGui::InputFloat("Min bass freq", &config::audio::min_freq, 10.f, 100.f, "%.2f"))
+	{
+		config::audio::min_freq = clamp(config::audio::min_freq, 0, config::audio::max_freq);
+	}
+	if (ImGui::InputFloat("Max bass freq", &config::audio::max_freq, 10.f, 100.f, "%.2f"))
+	{
+		config::audio::max_freq = clamp(config::audio::max_freq, config::audio::min_freq, std::numeric_limits<float>::infinity());
+	}
+
+	ImGui::InputFloat("BassCoeffA", &config::audio::bass_threshold_a, 0.1f, 1.f, "%.4f");
+	ImGui::InputFloat("BassCoeffB", &config::audio::bass_threshold_b, 0.1f, 1.f, "%.4f");
+
 }
 void Gui::renderTabConfig()
 {
@@ -168,5 +197,13 @@ void Gui::renderTabGraphics()
 		{
 			m_window->setFramerateLimit(config::graphics::framerate_limit);
 		}
+	}
+}
+
+void Gui::renderTabDebug()
+{
+	for (const auto& val : state::debug_textvec)
+	{
+		ImGui::Text(val.c_str());
 	}
 }

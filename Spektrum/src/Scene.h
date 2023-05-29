@@ -10,7 +10,7 @@ class Scene : private sf::NonCopyable
 public:
 							Scene();
 	void					init(shared_ptr<Window> window, shared_ptr<AudioSink> audiosink);
-	void					update(sf::Time dtTime);
+	void					update(const sf::Time& dtTime);
 	void					render();
 
 	void					buildScene();

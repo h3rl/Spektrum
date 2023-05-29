@@ -31,6 +31,10 @@ namespace state
 	extern bool window_show_fps;
 	extern bool window_show_menu;
 	extern bool window_show_config;
+
+	extern int audio_samplerate;
+
+	extern std::vector<std::string> debug_textvec;
 }
 
 
@@ -60,6 +64,9 @@ namespace config
 		extern float max_db;
 		extern float min_freq;
 		extern float max_freq;
+
+		extern float bass_threshold_a;
+		extern float bass_threshold_b;
 	}
 
 	void Save();

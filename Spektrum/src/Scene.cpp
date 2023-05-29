@@ -1,6 +1,8 @@
 #include "Scene.h"
 #include "AudioSink.h"
 
+#include <numeric> // std::accumulate
+
 Scene::Scene() :
 	m_window(nullptr),
 	m_audiosink(nullptr),
@@ -32,7 +34,6 @@ sf::Color interpolateColor(sf::Color color1, sf::Color color2, float factor)
 	uint8_t b = (uint8_t)((b2 - b1) * factor + b1);
 	return sf::Color(r, g, b);
 }
-
 
 void Scene::buildScene()
 {
@@ -71,10 +72,13 @@ void Scene::buildScene()
 
 }
 
-#include <numeric>
-
 //TODO:finish
-void Scene::update(sf::Time dtTime)
+static float bass_amount_last = 1.f;
+static boost::circular_buffer<float> signalenergies(32); // store energy for 64 samples
+
+const bool drawcircular = true;
+
+void Scene::update(const sf::Time& dtTime)
 {
 	if (state::window_needs_redraw)
 	{
@@ -84,38 +88,125 @@ void Scene::update(sf::Time dtTime)
 
 	sf::Vector2f window_size = m_window->getSizef();
 
-	const float bar_maxheight = window_size.y * 7.f / 8.f;
-	const float bar_maxwidth = window_size.x / rects.size();
-
+	const int rectsCount = rects.size();
 
 	// Gradient settings
-	const float bass_start = 5;
-	const float bass_range = 2;
+	const int bass_start = config::audio::min_freq / m_audiosink->getFreqPerSample(); // this is clamped to [0,inf>
+	const int bass_end = std::min((int)(config::audio::max_freq / m_audiosink->getFreqPerSample()), rectsCount); // this is clamped to <bass_start, inf> so clamp to rectcount aswell.
+	const int bass_range = bass_end - bass_start;
 
-	for (int i = 0; i < rects.size(); i++)
+	if (drawcircular)
 	{
-		const float& freq_gain = m_audiosink->Output[i];
-		sf::RectangleShape& r = rects[i];
-
-		const float& bar_gain = config::audio::bar_gain;
-		const float barheight = freq_gain * bar_maxheight * bar_gain;
-		r.setSize(sf::Vector2f(bar_maxwidth, barheight));
-
-		if (i >= bass_start && i <= bass_start + bass_range)
+		for (int i = 0; i < rectsCount; i++)
 		{
-			r.setFillColor(sf::Color::Blue);
+			const float& freq_gain = m_audiosink->Output[i];
+			sf::RectangleShape& r = rects[i];
+
+			const float& bar_gain = config::audio::bar_gain;
+			const float barheight = freq_gain * 255.f;
+			const float delta_deg = 360.f / rectsCount;
+			const float degs = delta_deg * i;
+			const float rads = PIf / 180.f * degs;
+
+			const float radius = 75.f;
+			const float x = window_size.x / 2.f + radius * cos(rads);
+			const float y = window_size.y / 2.f + radius * sin(rads);
+
+			const float circumference = 2.f * PIf * radius;
+			const float barwidth = 2.f* circumference/ (float)rectsCount;
+
+			r.setSize(sf::Vector2f(barwidth, barheight));
+			r.setPosition(x, y);
+			r.setRotation(degs-90.f);
+
+			const float fraction = (float)i / (float)rectsCount;
+			const sf::Color color = interpolateColor(sf::Color::Red, sf::Color::Yellow, fraction);
+			r.setFillColor(color);
+
+			//if (bass_start <= i && i <= bass_end)
+			//{
+			//	r.setFillColor(sf::Color::Blue);
+			//}
+			//else
+			//{
+			//	const sf::Color color = interpolateColor(sf::Color::Red, sf::Color::Yellow, fraction);
+			//	r.setFillColor(color);
+			//}
 		}
 	}
-
-
-	float newgradient = 0;
-	for (int i = bass_start; i < bass_start+bass_range; i++)
+	else
 	{
-		const float strength = m_audiosink->Output[i];
-		newgradient += strength;
+		const float bar_maxheight = window_size.y * 7.f / 8.f;
+		const float bar_maxwidth = window_size.x / rects.size();
+
+		for (int i = 0; i < rectsCount; i++)
+		{
+			const float& freq_gain = m_audiosink->Output[i];
+			sf::RectangleShape& r = rects[i];
+
+			const float& bar_gain = config::audio::bar_gain;
+			const float barheight = freq_gain * bar_maxheight * bar_gain;
+			r.setSize(sf::Vector2f(bar_maxwidth, barheight));
+
+			const float fraction = (float)i / (float)rectsCount;
+
+			if (bass_start <= i && i <= bass_end)
+			{
+				r.setFillColor(sf::Color::Blue);
+			}
+			else
+			{
+				const sf::Color color = interpolateColor(sf::Color::Red, sf::Color::Yellow, fraction);
+				r.setFillColor(color);
+			}
+		}
 	}
-	newgradient /= bass_range;
-	gradient_strength = newgradient;
+	// calculate energy of signal
+	float energy = 0;
+	for (int i = bass_start; i < bass_end; i++)
+	{
+		const float& freq_output = m_audiosink->Output[i];
+		energy += freq_output;
+	}
+	energy /= bass_range;
+	signalenergies.push_back(energy);
+
+	// calculate average
+	float average = std::accumulate(signalenergies.begin(), signalenergies.end(), 0.0f) / signalenergies.size();
+
+	// calculate variance
+	float variance = 0;
+	for (int i = 0; i < signalenergies.size(); i++)
+	{
+		const float& energy = signalenergies[i];
+		variance += std::powf((energy - average),2);
+	}
+	variance /= signalenergies.size();
+
+	float& coeff_a = config::audio::bass_threshold_a;
+	float& coeff_b = config::audio::bass_threshold_b;
+
+	float threshold = coeff_a * variance + coeff_b;
+	float energythreshold = threshold * average;
+
+
+	if (energy > energythreshold)
+	{
+		// its a kick
+		gradient_strength = 1.f;
+	}
+	else {
+		gradient_strength *= 0.997f;
+	}
+
+
+	state::debug_textvec.push_back(std::format("average energy: {:4f}", average));
+	state::debug_textvec.push_back(std::format("variance energy: {:4f}", variance));
+	state::debug_textvec.push_back(std::format("current energy: {:4f}", energy));
+	state::debug_textvec.push_back(std::format("ethreshold = a*var + b: {:4f}", energythreshold));
+	state::debug_textvec.push_back(std::format("energy-ethreshold: {:4f}", (float)(energy - energythreshold)));
+	state::debug_textvec.push_back(std::format("a*var: {:4f}", (float)(coeff_a * variance)));
+
 
 	radial_gradient_shader.setUniform("strength", gradient_strength * 0.00075f);
 

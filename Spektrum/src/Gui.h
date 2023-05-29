@@ -4,10 +4,10 @@
 class Gui : private sf::NonCopyable
 {
 public:
-							Gui();
-							~Gui();
-
-	void					update(sf::Time dtTime);
+	Gui();
+	~Gui();
+	void					preupdate();
+	void					update(const sf::Time& dtTime);
 	void					render();
 	bool					init(shared_ptr<Window> window);
 
@@ -20,6 +20,7 @@ private:
 	void					renderTabMain();
 	void					renderTabConfig();
 	void					renderTabGraphics();
+	void					renderTabDebug();
 private:
 
 	shared_ptr<Window>		m_window;

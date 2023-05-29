@@ -54,6 +54,9 @@ bool AudioSink::init()
     _D("Samplerate: " << pwaveformatex->nSamplesPerSec);
     _D("channelcount: " << pwaveformatex->nChannels);
 
+    // because we downsample later, divide by 2
+    state::audio_samplerate = pwaveformatex->nSamplesPerSec / 2;
+
     if (pwaveformatex->nChannels != 2)
     {
 		_D("Only stereo supported so far");
@@ -174,10 +177,9 @@ void AudioSink::applyWindowing()
 }
 #undef N
 
-void AudioSink::update()
+void AudioSink::update(const sf::Time& dtTime)
 {
     if (!m_bInitialized) return;
-
 
     const int bytesPerSamplePerChannel = pwaveformatex->wBitsPerSample / 8;
     const int bytesPerSample = bytesPerSamplePerChannel * pwaveformatex->nChannels;
@@ -257,7 +259,10 @@ void AudioSink::update()
             const float imag = fftOutputComplex[i][1];
             const float mag = sqrt(real * real + imag * imag);
 
-            const float tau = config::audio::time_smoothing;
+            const float timeconst = config::audio::time_smoothing;
+            const float seconds = dtTime.asSeconds();
+
+            const float tau = 1.0f - std::exp(-seconds / timeconst);
             fftOutput[i] = tau * fftOutput[i] + (1.f - tau) * mag;
 
             switch (config::audio::barstyle)
@@ -294,8 +299,11 @@ void AudioSink::update()
         // clear buffer
 		pCaptureClient->ReleaseBuffer(numFramesAvailable);
     }
+}
 
-
+float AudioSink::getFreqPerSample()
+{
+    return state::audio_samplerate / FFT_SIZE_HALF;
 }
 
 #define SAFE_RELEASE(ob) if (ob) { (ob)->Release(); ob = nullptr; }

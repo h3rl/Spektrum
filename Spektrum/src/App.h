@@ -17,7 +17,7 @@ public:
 
 private:
 	void					processEvents();
-	void					update(sf::Time dtTime);
+	void					update(const sf::Time& dtTime);
 	void					render();
 private:
 
