@@ -10,4 +10,4 @@ vcpkg.exe install fftw3 imgui-sfml sfml thor boost-circular-buffer
 
 This project is still in early development and more features are to come. Here is a preview of current version.
 
-<img src="./Spektrum/Assets/preview3.png"/>
+<img src="./Spektrum/Assets/preview4.png"/>
