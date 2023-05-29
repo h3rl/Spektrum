@@ -10,4 +10,20 @@ vcpkg.exe install fftw3 imgui-sfml sfml thor boost-circular-buffer
 
 This project is still in early development and more features are to come. Here is a preview of current version.
 
+## Version gallery
+
 <img src="./Spektrum/Assets/preview4.png"/>
+v0.04 - 30.05.2023
+<hr>
+
+<img src="./Spektrum/Assets/preview3.png"/>
+v0.03 - 21.05.2023
+<hr>
+
+<img src="./Spektrum/Assets/preview2.png"/>
+v0.02 - 09.05.2023
+<hr>
+
+<img src="./Spektrum/Assets/preview.png"/>
+v0.01 - 08.05.2023
+<hr>
