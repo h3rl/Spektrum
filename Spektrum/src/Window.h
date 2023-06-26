@@ -31,3 +31,5 @@ private:
 	WindowOrigin			m_viewOrigin;
 	WindowAxis				m_viewAxis;
 };
+
+extern Window g_window;

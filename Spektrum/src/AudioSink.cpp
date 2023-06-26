@@ -55,7 +55,7 @@ bool AudioSink::init()
     _D("channelcount: " << pwaveformatex->nChannels);
 
     // because we downsample later, divide by 2
-    state::audio_samplerate = pwaveformatex->nSamplesPerSec / 2;
+    state.audio_samplerate = pwaveformatex->nSamplesPerSec / 2;
 
     if (pwaveformatex->nChannels != 2)
     {
@@ -97,10 +97,15 @@ bool AudioSink::init()
     return true;
 }
 
+void AudioSink::setPbCallback(callback_ProcessPacketBuffer callback)
+{
+    CallbackProcessPacketBuffer = callback;
+}
+
 #define N (FFT_SIZE - 1)
 void AudioSink::applyWindowing()
 {
-    const AudioWindowFunction wf = config::audio::windowfunction;
+    const AudioWindowFunction wf = config.audio.windowfunction;
     float* data = this->fftInput;
 
     if (wf == AudioWindowFunction::None || wf == AudioWindowFunction::Rect)
@@ -235,12 +240,13 @@ void AudioSink::update(const sf::Time& dtTime)
             return;
         }
 
-        float* pfData = (float*)pData;
-        for (int i = 0; i < bufferSampleCount; i += 4)
+        if (CallbackProcessPacketBuffer == nullptr)
         {
-            const float downsampled = 0.25f * (pfData[i] + pfData[i + 1] + pfData[i + 2] + pfData[i + 3]); // average to create mono
-            m_rawmonodata.push_front(downsampled);
+            _D("Callbackfuntion not defined");
+            return;
         }
+
+        CallbackProcessPacketBuffer(m_rawmonodata, (float*)pData, bufferSampleCount);
 
         // copy data from deque to fft input
         std::copy(m_rawmonodata.begin(), m_rawmonodata.end(), fftInput);
@@ -259,13 +265,13 @@ void AudioSink::update(const sf::Time& dtTime)
             const float imag = fftOutputComplex[i][1];
             const float mag = sqrt(real * real + imag * imag);
 
-            const float timeconst = config::audio::time_smoothing;
+            const float timeconst = config.audio.time_smoothing;
             const float seconds = dtTime.asSeconds();
 
             const float tau = 1.0f - std::exp(-seconds / timeconst);
             fftOutput[i] = tau * fftOutput[i] + (1.f - tau) * mag;
 
-            switch (config::audio::barstyle)
+            switch (config.audio.barstyle)
             {
             case Linear:
             {
@@ -278,8 +284,8 @@ void AudioSink::update(const sf::Time& dtTime)
                 const float dbout = 20.f * log10(fftOutput[i]);
 
                 // populate byteFrequencyData
-                const float dbMax = config::audio::max_db;
-                const float dbMin = config::audio::min_db;
+                const float dbMax = config.audio.max_db;
+                const float dbMin = config.audio.min_db;
                 const float dbRange = dbMax - dbMin;
 
                 float floatval = 1.f / dbRange * (dbout - dbMin);
@@ -303,7 +309,7 @@ void AudioSink::update(const sf::Time& dtTime)
 
 float AudioSink::getFreqPerSample()
 {
-    return state::audio_samplerate / FFT_SIZE_HALF;
+    return (float)state.audio_samplerate / (float)FFT_SIZE_HALF;
 }
 
 #define SAFE_RELEASE(ob) if (ob) { (ob)->Release(); ob = nullptr; }
@@ -327,3 +333,5 @@ void AudioSink::release()
     CoUninitialize();
 
 }
+
+AudioSink g_audiosink;

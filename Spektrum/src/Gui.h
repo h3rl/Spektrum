@@ -9,7 +9,7 @@ public:
 	void					preupdate();
 	void					update(const sf::Time& dtTime);
 	void					render();
-	bool					init(shared_ptr<Window> window);
+	bool					init();
 
 private:
 
@@ -22,10 +22,10 @@ private:
 	void					renderTabGraphics();
 	void					renderTabDebug();
 private:
-
-	shared_ptr<Window>		m_window;
 	sf::Font							m_font;
 	sf::Clock							clock;
 
 	sf::Text							m_fpsText;
 };
+
+extern Gui g_gui;

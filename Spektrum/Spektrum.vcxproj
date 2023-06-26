@@ -88,8 +88,6 @@
   <ItemGroup>
     <ClCompile Include="src\AudioSink.cpp" />
     <ClCompile Include="src\Config.cpp" />
-    <ClCompile Include="src\EventHandler.cpp" />
-    <ClCompile Include="src\App.cpp" />
     <ClCompile Include="src\Gui.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\stdafx.cpp" />
@@ -99,8 +97,6 @@
   <ItemGroup>
     <ClInclude Include="src\AudioSink.h" />
     <ClInclude Include="src\Config.h" />
-    <ClInclude Include="src\EventHandler.h" />
-    <ClInclude Include="src\App.h" />
     <ClInclude Include="src\Gui.h" />
     <ClInclude Include="src\stdafx.h" />
     <ClInclude Include="src\Scene.h" />

@@ -1,7 +1,6 @@
 #pragma once
 #include "AudioSink.h"
 
-
 #define AudioWindowFunctionCombo "None\0Blackman\0Hamming\0Hann\0Rect\0Triangle\0Welch\0FlatTop\0BlackmanHarris\0\0"
 enum AudioWindowFunction : int
 {
@@ -23,53 +22,61 @@ enum AudioAxisScale : int
 };
 
 // Stuff we dont need to save
-namespace state
+class State
 {
-	extern bool window_needs_redraw;
-	extern bool in_gui;
+public:
+	State() {};
 
-	extern bool window_show_fps;
-	extern bool window_show_menu;
-	extern bool window_show_config;
+	bool window_needs_redraw{ false };
+	bool in_gui{ false };
 
-	extern int audio_samplerate;
+	bool window_show_fps{ true };
+	bool window_show_menu{ true };
+	bool window_show_config{ false };
 
-	extern std::vector<std::string> debug_textvec;
-}
+	int audio_samplerate{ 0 };
 
+	std::vector<std::string> debug_textvec{};
+};
+
+extern State state;
 
 // Stuff we need to save
-namespace config
+class Config
 {
-	extern int window_width;
-	extern int window_height;
+public:
+	/* Fields */
+	int window_width{ 1600 };
+	int window_height{ 900 };
+	bool load_config_on_startup{ true };
 
-	extern bool load_config_on_startup;
-
-	namespace graphics
+	struct _Graphics
 	{
-		extern bool vsync;
-		extern int framerate_limit;
-		extern int antialiasing_level;
-	}
+		bool vsync{ false };
+		int framerate_limit{ 240 };
+		int antialiasing_level{ 4 };
+	} graphics;
 
-	namespace audio
+	struct _Audio
 	{
-		extern AudioWindowFunction windowfunction;
-		extern AudioAxisScale barstyle;
-		extern int bar_count;
-		extern float bar_gain;
-		extern float time_smoothing;
-		extern float min_db;
-		extern float max_db;
-		extern float min_freq;
-		extern float max_freq;
+		AudioWindowFunction windowfunction{ Blackman };
+		AudioAxisScale barstyle{ Logarithmic };
+		int bar_count{ (int)(FFT_SIZE_HALF) };
+		float bar_gain{ 1.0f };
+		float time_smoothing{ 0.82f };
+		float min_db{ -60.0f };
+		float max_db{ 0.0f };
+		float min_freq{ 20.0f };
+		float max_freq{ 20000.0f };
 
-		extern float bass_threshold_a;
-		extern float bass_threshold_b;
-	}
+		float bass_threshold_a{ -15.f };
+		float bass_threshold_b{ 1.55f };
+	} audio;
 
+	/* IO functions */
 	void Save();
 	void Load();
 	bool LoadOnStartup();
-}
+};
+
+extern Config config;

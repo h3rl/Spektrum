@@ -4,19 +4,22 @@
 #include <numeric> // std::accumulate
 
 Scene::Scene() :
-	m_window(nullptr),
-	m_audiosink(nullptr),
 	m_pData(nullptr)
 {
 }
 
-void Scene::init(shared_ptr<Window> window, shared_ptr<AudioSink> audiosink)
+bool Scene::init()
 {
-	this->m_window = window;
-	this->m_audiosink = audiosink;
-	this->m_pData = m_audiosink->Output;
+	this->m_pData = g_audiosink.Output;
+
+	if (!this->m_pData)
+	{
+		return false;
+	}
 
 	buildScene();
+
+	return true;
 }
 
 sf::Color interpolateColor(sf::Color color1, sf::Color color2, float factor)
@@ -37,20 +40,20 @@ sf::Color interpolateColor(sf::Color color1, sf::Color color2, float factor)
 
 void Scene::buildScene()
 {
-	const float wheight = m_window->getSize().y / 2.f;
-	const float wwidth = m_window->getSize().x / 2.f;
+	const float wheight = g_window.getSize().y / 2.f;
+	const float wwidth = g_window.getSize().x / 2.f;
 
 	// make sure its emtpy
 	rects.clear();
 
-	const int rectsCount = config::audio::bar_count;
+	const int rectsCount = config.audio.bar_count;
 
 	for (int i = 0; i < rectsCount; i++)
 	{
 		const float fraction = (float)i / (float)rectsCount;
 
-		const float xpos = m_window->getSize().x * fraction;
-		const float ypos = 0;// m_window->getSize().y * 1 / 8;
+		const float xpos = g_window.getSize().x * fraction;
+		const float ypos = 0;// g_window.getSize().y * 1 / 8;
 
 		const sf::Color color = interpolateColor(sf::Color::Red, sf::Color::Yellow, fraction);
 
@@ -63,10 +66,10 @@ void Scene::buildScene()
 	const float r = 200.f;
 
 	radial_gradient_rect.setPosition(0, 0);
-	radial_gradient_rect.setSize(m_window->getSizef());
+	radial_gradient_rect.setSize(g_window.getSizef());
 
 	radial_gradient_shader.loadFromFile("Assets/radial_gradient.frag", sf::Shader::Fragment);
-	radial_gradient_shader.setUniform("windowsize", m_window->getSizef());
+	radial_gradient_shader.setUniform("windowsize", g_window.getSizef());
 	radial_gradient_shader.setUniform("center_color", sf::Vector3f(0, 0, 0));
 	radial_gradient_shader.setUniform("outer_color", sf::Vector3f(1, 0, 0));
 
@@ -80,29 +83,29 @@ const bool drawcircular = true;
 
 void Scene::update(const sf::Time& dtTime)
 {
-	if (state::window_needs_redraw)
+	if (state.window_needs_redraw)
 	{
 		buildScene();
-		state::window_needs_redraw = false;
+		state.window_needs_redraw = false;
 	}
 
-	sf::Vector2f window_size = m_window->getSizef();
+	sf::Vector2f window_size = g_window.getSizef();
 
 	const int rectsCount = rects.size();
 
 	// Gradient settings
-	const int bass_start = config::audio::min_freq / m_audiosink->getFreqPerSample(); // this is clamped to [0,inf>
-	const int bass_end = std::min((int)(config::audio::max_freq / m_audiosink->getFreqPerSample()), rectsCount); // this is clamped to <bass_start, inf> so clamp to rectcount aswell.
+	const int bass_start = (int)(config.audio.min_freq / g_audiosink.getFreqPerSample()); // this is clamped to [0,inf>
+	const int bass_end = std::min((int)(config.audio.max_freq / g_audiosink.getFreqPerSample()), rectsCount); // this is clamped to <bass_start, inf> so clamp to rectcount aswell.
 	const int bass_range = bass_end - bass_start;
 
 	if (drawcircular)
 	{
 		for (int i = 0; i < rectsCount; i++)
 		{
-			const float& freq_gain = m_audiosink->Output[i];
+			const float& freq_gain = g_audiosink.Output[i];
 			sf::RectangleShape& r = rects[i];
 
-			const float& bar_gain = config::audio::bar_gain;
+			const float& bar_gain = config.audio.bar_gain;
 			const float barheight = freq_gain * 255.f;
 			const float delta_deg = 360.f / rectsCount;
 			const float degs = delta_deg * i;
@@ -141,10 +144,10 @@ void Scene::update(const sf::Time& dtTime)
 
 		for (int i = 0; i < rectsCount; i++)
 		{
-			const float& freq_gain = m_audiosink->Output[i];
+			const float& freq_gain = g_audiosink.Output[i];
 			sf::RectangleShape& r = rects[i];
 
-			const float& bar_gain = config::audio::bar_gain;
+			const float& bar_gain = config.audio.bar_gain;
 			const float barheight = freq_gain * bar_maxheight * bar_gain;
 			r.setSize(sf::Vector2f(bar_maxwidth, barheight));
 
@@ -165,7 +168,7 @@ void Scene::update(const sf::Time& dtTime)
 	float energy = 0;
 	for (int i = bass_start; i < bass_end; i++)
 	{
-		const float& freq_output = m_audiosink->Output[i];
+		const float& freq_output = g_audiosink.Output[i];
 		energy += freq_output;
 	}
 	energy /= bass_range;
@@ -183,8 +186,8 @@ void Scene::update(const sf::Time& dtTime)
 	}
 	variance /= signalenergies.size();
 
-	float& coeff_a = config::audio::bass_threshold_a;
-	float& coeff_b = config::audio::bass_threshold_b;
+	float& coeff_a = config.audio.bass_threshold_a;
+	float& coeff_b = config.audio.bass_threshold_b;
 
 	float threshold = coeff_a * variance + coeff_b;
 	float energythreshold = threshold * average;
@@ -200,28 +203,30 @@ void Scene::update(const sf::Time& dtTime)
 	}
 
 
-	state::debug_textvec.push_back(std::format("average energy: {:4f}", average));
-	state::debug_textvec.push_back(std::format("variance energy: {:4f}", variance));
-	state::debug_textvec.push_back(std::format("current energy: {:4f}", energy));
-	state::debug_textvec.push_back(std::format("ethreshold = a*var + b: {:4f}", energythreshold));
-	state::debug_textvec.push_back(std::format("energy-ethreshold: {:4f}", (float)(energy - energythreshold)));
-	state::debug_textvec.push_back(std::format("a*var: {:4f}", (float)(coeff_a * variance)));
+	state.debug_textvec.push_back(std::format("average energy: {:4f}", average));
+	state.debug_textvec.push_back(std::format("variance energy: {:4f}", variance));
+	state.debug_textvec.push_back(std::format("current energy: {:4f}", energy));
+	state.debug_textvec.push_back(std::format("ethreshold = a*var + b: {:4f}", energythreshold));
+	state.debug_textvec.push_back(std::format("energy-ethreshold: {:4f}", (float)(energy - energythreshold)));
+	state.debug_textvec.push_back(std::format("a*var: {:4f}", (float)(coeff_a * variance)));
 
 
 	radial_gradient_shader.setUniform("strength", gradient_strength * 0.00075f);
 
 	radial_gradient_rect.setPosition(0, 0);
-	radial_gradient_rect.setSize(m_window->getSizef());
+	radial_gradient_rect.setSize(g_window.getSizef());
 }
 
 //TODO:finish
 void Scene::render()
 {
 	// Draw the gradient quad
-	m_window->draw(radial_gradient_rect, &radial_gradient_shader);
+	g_window.draw(radial_gradient_rect, &radial_gradient_shader);
 
 	for (const auto& r : rects)
 	{
-		m_window->draw(r);
+		g_window.draw(r);
 	}
 }
+
+Scene g_scene;

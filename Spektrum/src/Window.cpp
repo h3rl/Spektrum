@@ -11,18 +11,18 @@ m_viewOrigin(WindowOrigin::BottomLeft)
 bool Window::init()
 {
 	sf::ContextSettings settings;
-	settings.antialiasingLevel = config::graphics::antialiasing_level;
+	settings.antialiasingLevel = config.graphics.antialiasing_level;
 
-	this->create(sf::VideoMode(config::window_width, config::window_height), "App", sf::Style::Default, settings);
+	this->create(sf::VideoMode(config.window_width, config.window_height), "App", sf::Style::Default, settings);
 
-	if (config::graphics::vsync)
+	if (config.graphics.vsync)
 	{
 		this->setVerticalSyncEnabled(true);
 	}
 	else
 	{
 		this->setVerticalSyncEnabled(false);
-		this->setFramerateLimit(config::graphics::framerate_limit);
+		this->setFramerateLimit(config.graphics.framerate_limit);
 	}
 
 	_D("window set");
@@ -60,8 +60,8 @@ void Window::updateSize()
 	const float wHeight = wSize.y;
 
 	// update config
-	config::window_height = wHeight;
-	config::window_width = wWidth;
+	config.window_height = wHeight;
+	config.window_width = wWidth;
 
 	// Correct axis
 	switch (this->m_viewAxis)
@@ -112,3 +112,5 @@ sf::Vector2f Window::getSizef()
 {
 	return (sf::Vector2f)this->getSize();
 }
+
+Window g_window;

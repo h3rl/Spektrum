@@ -21,6 +21,8 @@
 #define FFT_SIZE (int)(1 << 12)
 #define FFT_SIZE_HALF FFT_SIZE/2
 
+typedef void (*callback_ProcessPacketBuffer)(boost::circular_buffer<float>& dest, float* pData, const UINT& size);
+
 class AudioSink
 {
 private:
@@ -42,7 +44,6 @@ private:
 	DWORD flags = 0;
 
 	// FFTW3 stuff
-
 	BYTE* pData = nullptr;
 
 	std::thread thread;
@@ -60,13 +61,16 @@ private:
 public:
 	float Output[FFT_SIZE_HALF] = {};
 
+	callback_ProcessPacketBuffer CallbackProcessPacketBuffer = nullptr;
+
 	AudioSink();
 	~AudioSink();
 
 	bool init();
+	
+	void setPbCallback(callback_ProcessPacketBuffer callback);
 
 	void update(const sf::Time& dtTime);
-
 	float getFreqPerSample();
 
 private:
@@ -75,3 +79,5 @@ private:
 
 	void applyWindowing();
 };
+
+extern AudioSink g_audiosink;

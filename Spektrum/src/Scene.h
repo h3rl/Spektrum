@@ -9,7 +9,7 @@ class Scene : private sf::NonCopyable
 {
 public:
 							Scene();
-	void					init(shared_ptr<Window> window, shared_ptr<AudioSink> audiosink);
+	bool					init();
 	void					update(const sf::Time& dtTime);
 	void					render();
 
@@ -22,8 +22,6 @@ private:
 	float							gradient_strength = 1.f;
 
 	float*							m_pData;
-
-private:
-	shared_ptr<Window>				m_window;
-	shared_ptr<AudioSink>			m_audiosink;
 };
+
+extern Scene g_scene;
