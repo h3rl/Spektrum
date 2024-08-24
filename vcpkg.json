@@ -1,0 +1,11 @@
+{
+  "dependencies": [
+    "boost-circular-buffer",
+    "fftw3",
+    "fmt",
+    "imgui-sfml",
+    "sfml",
+    "thor",
+    "libconfig"
+  ]
+}

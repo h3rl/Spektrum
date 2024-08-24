@@ -68,7 +68,7 @@ void Scene::buildScene()
 	radial_gradient_rect.setPosition(0, 0);
 	radial_gradient_rect.setSize(g_window.getSizef());
 
-	radial_gradient_shader.loadFromFile("Assets/radial_gradient.frag", sf::Shader::Fragment);
+	radial_gradient_shader.loadFromFile("assets/radial_gradient.frag", sf::Shader::Fragment);
 	radial_gradient_shader.setUniform("windowsize", g_window.getSizef());
 	radial_gradient_shader.setUniform("center_color", sf::Vector3f(0, 0, 0));
 	radial_gradient_shader.setUniform("outer_color", sf::Vector3f(1, 0, 0));

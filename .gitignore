@@ -37,7 +37,10 @@ x64/
 Release/
 Debug/
 packages/
+out/
+vcpkg_installed/
 *.cfg
 *.ini
 
 *.wav
+

@@ -6,7 +6,7 @@
 
 #define CONFIG_SAVE(variable) file << #variable << " " << this->variable << std::endl;
 #define CONFIG_SAVE_ENUM(variable, type) file << #variable << " " << static_cast<int>(this->variable) << std::endl;
-void config.Save()
+void Config::Save()
 {
     std::fstream file(CONFIG_NAME, std::ios::out | std::ios::binary);
 
@@ -43,7 +43,7 @@ void config.Save()
 #define CONFIG_LOAD(variable) if (key == #variable) { iss >> this->variable; }
 #define CONFIG_LOAD_ENUM(variable, type) if (key == #variable) { int value; iss >> value; this->variable = static_cast<type>(value); }
 
-void config.Load()
+void Config::Load()
 {
     std::fstream file(CONFIG_NAME, std::ios::in | std::ios::binary);
 
@@ -104,7 +104,7 @@ void config.Load()
     _D("Config loaded");
 }
 
-bool config.LoadOnStartup()
+bool Config::LoadOnStartup()
 {
     std::fstream file(CONFIG_NAME, std::ios::in | std::ios::binary);
 

@@ -24,10 +24,10 @@ bool Gui::init()
 		return false;
 	}
 
-	if (!m_font.loadFromFile("Assets\\arial.ttf"))
+	if (!m_font.loadFromFile("assets\\arial.ttf"))
 	{
 		_D("GUI: Load font failed");
-		MessageBoxA(NULL, "Font could not be loaded\nat \'./Assets/arial.ttf\'", "Error", MB_OK);
+		MessageBoxA(NULL, "Font could not be loaded\nat \'./assets/arial.ttf\'", "Error", MB_OK);
 		return false;
 	}
 
