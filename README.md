@@ -14,18 +14,18 @@ This is a recreation of an old project of mine. The old project was implemented 
 
 ## Version gallery
 
-<img src="./Spektrum/Assets/preview4.png"/>
+<img src="./assets/preview4.png"/>
 v0.04 - 30.05.2023
 <hr>
 
-<img src="./Spektrum/Assets/preview3.png"/>
+<img src="./assets/preview3.png"/>
 v0.03 - 21.05.2023
 <hr>
 
-<img src="./Spektrum/Assets/preview2.png"/>
+<img src="./assets/preview2.png"/>
 v0.02 - 09.05.2023
 <hr>
 
-<img src="./Spektrum/Assets/preview.png"/>
+<img src="./assets/preview.png"/>
 v0.01 - 08.05.2023
 <hr>
