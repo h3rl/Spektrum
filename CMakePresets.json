@@ -1,61 +1,47 @@
-﻿{
-    "version": 3,
+{
+    "version": 8,
     "configurePresets": [
         {
-            "name": "windows-base",
-            "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/out/build/${presetName}",
-            "installDir": "${sourceDir}/out/install/${presetName}",
+            "name": "win32-msvc-x64-debug",
+            "displayName": "Windows MSVC x64 (Visual Studio 17 2022) Debug",
+            "description": "Windows Debug",
+            "generator": "Visual Studio 17 2022",
+            "binaryDir": "${sourceDir}/out/${presetName}/build",
+            "installDir": "${sourceDir}/out/${presetName}/install",
+            "hidden": false,
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "cl.exe",
-                "CMAKE_CXX_COMPILER": "cl.exe"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
+                "CMAKE_TOOLCHAIN_FILE": "C:/sdk/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/${presetName}/install",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "VCPKG_TARGET_TRIPLET": "x64-windows"
             }
         },
         {
-            "name": "x64-debug",
-            "displayName": "x64 Debug",
-            "inherits": "windows-base",
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            },
+            "name": "win32-msvc-x64-release",
+            "displayName": "Windows MSVC x64 (Visual Studio 17 2022) Release",
+            "description": "Windows Release",
+            "generator": "Visual Studio 17 2022",
+            "binaryDir": "${sourceDir}/out/${presetName}/build",
+            "installDir": "${sourceDir}/out/${presetName}/install",
+            "hidden": false,
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "x64-release",
-            "displayName": "x64 Release",
-            "inherits": "x64-debug",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_TOOLCHAIN_FILE": "C:/sdk/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/${presetName}/install",
+                "CMAKE_BUILD_TYPE": "Release",
+                "VCPKG_TARGET_TRIPLET": "x64-windows"
             }
         }
-        //{
-        //    "name": "x86-debug",
-        //    "displayName": "x86 Debug",
-        //    "inherits": "windows-base",
-        //    "architecture": {
-        //        "value": "x86",
-        //        "strategy": "external"
-        //    },
-        //    "cacheVariables": {
-        //        "CMAKE_BUILD_TYPE": "Debug"
-        //    }
-        //},
-        //{
-        //    "name": "x86-release",
-        //    "displayName": "x86 Release",
-        //    "inherits": "x86-debug",
-        //    "cacheVariables": {
-        //        "CMAKE_BUILD_TYPE": "Release"
-        //    }
-        //}
+    ],
+    "buildPresets": [
+        {
+            "name": "win32-msvc-x64-debug",
+            "displayName": "Windows MSVC x64 (Visual Studio 17 2022) Debug",
+            "configurePreset": "win32-msvc-x64-debug"
+        },
+        {
+            "name": "win32-msvc-x64-release",
+            "displayName": "Windows MSVC x64 (Visual Studio 17 2022) Release",
+            "configurePreset": "win32-msvc-x64-release"
+        }
     ]
 }

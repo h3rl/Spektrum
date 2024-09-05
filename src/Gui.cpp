@@ -1,88 +1,102 @@
-#include "stdafx.h"
+#include "gui.h"
+#include "config.h"
+#include "logging.h"
+#include "window.h"
 
-#include "Gui.h"
+#include <imgui.h>
+#include <imgui-SFML.h>
 
-Gui::Gui()
+namespace Gui
 {
-}
 
-Gui::~Gui()
+// forward declarations
+void renderFpsText();
+void renderMenuV1();
+void renderTabMain();
+void renderTabConfig();
+void renderTabGraphics();
+void renderTabDebug();
+
+// Globals
+bool hovered = false;
+bool show_fps = true;
+bool show_gui = true;
+
+sf::Font font;
+sf::Text fps_text;
+
+void release()
 {
 	ImGui::SFML::Shutdown();
 }
 
-void Gui::preupdate()
+void preupdate()
 {
-	state.debug_textvec.clear();
+	//state.debug_textvec.clear();
 }
 
-bool Gui::init()
+void init()
 {
-	if (!ImGui::SFML::Init(g_window))
-	{
-		_D("GUI: Imgui init failed");
-		return false;
-	}
+	bool imgui_init = ImGui::SFML::Init(*p_window);
+	assert_msg(imgui_init, "GUI: Imgui init failed");
 
-	if (!m_font.loadFromFile("assets\\arial.ttf"))
-	{
-		_D("GUI: Load font failed");
-		MessageBoxA(NULL, "Font could not be loaded\nat \'./assets/arial.ttf\'", "Error", MB_OK);
-		return false;
-	}
+	ImGui::GetIO().IniFilename = nullptr;
 
-	m_fpsText.setFont(m_font);
-	m_fpsText.setString("");
-	m_fpsText.setCharacterSize(14); // in pixels, not points!
-	m_fpsText.setFillColor(sf::Color(110, 255, 0));
-	m_fpsText.setPosition({ 0,0 });
+	bool font_loaded = font.loadFromFile("assets\\arial.ttf");
+	assert_msg(font_loaded, "GUI: Load font failed");
 
-	return true;
+	fps_text.setFont(font);
+	fps_text.setString("");
+	fps_text.setCharacterSize(14); // in pixels, not points!
+	fps_text.setFillColor(sf::Color(110, 255, 0));
+	fps_text.setPosition({ 0, 0 });
 }
 
-void Gui::update(const sf::Time& dtTime)
+void update(const sf::Time &dtTime)
 {
-	ImGui::SFML::Update(g_window,dtTime);
+	ImGui::SFML::Update(*p_window, dtTime);
 
-	state.in_gui = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
+	hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
 
-	m_fpsText.setString(std::to_string((int)( 1 / dtTime.asSeconds())));
+	fps_text.setString(std::to_string((int)(1 / dtTime.asSeconds())));
 }
 
-void Gui::render()
+void render()
 {
 	renderMenuV1();
 
 	//ImGui::ShowDemoWindow();
-	ImGui::SFML::Render(g_window);
+	ImGui::SFML::Render(*p_window);
 
-	if (state.window_show_fps)
+	if (show_fps)
 	{
 		renderFpsText();
 	}
 }
 
-void Gui::renderFpsText()
+void renderFpsText()
 {
-	sf::View oldview = g_window.getView();
-	sf::View view = g_window.getSizedView();
+	// sf::View oldview = p_window->getView();
+	// sf::View newview = p_window->getDefaultView();
 	// Reset view to default, so we can draw the text
-	g_window.setView(view);
-	g_window.draw(m_fpsText);
+	// p_window->setView(newview);
+	p_window->draw(fps_text);
 
 	// Set it back to the original view
-	g_window.setView(oldview);
+	// p_window->setView(oldview);
 }
 
-void Gui::renderMenuV1()
-{	
-	if (!ImGui::Begin("GUI", &state.window_show_menu, ImGuiWindowFlags_AlwaysAutoResize))
+void renderMenuV1()
+{
+	if (!ImGui::Begin("GUI", &show_gui, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::End();
 		return;
 	}
 
 	ImGui::SetWindowPos({ 10, 10 }, ImGuiCond_Once);
+
+	ImGui::Text("Test");
 
 	if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_None))
 	{
@@ -124,82 +138,77 @@ void Gui::renderMenuV1()
 	ImGui::End();
 }
 
-void Gui::renderTabMain()
+void renderTabMain()
 {
-	ImGui::Combo("Bar style", (int*)&config.audio.barstyle, "Linear\0Logarithmic\0\0");
+	// ImGui::Combo("Bar style", (int *)&config.audio.barstyle, "Linear\0Logarithmic\0\0");
 
-	if (ImGui::SliderInt("Bar Count", &config.audio.bar_count, 1, FFT_SIZE_HALF, "%d"))
-	{
-		state.window_needs_redraw = true;
-	}
-	ImGui::InputFloat("Bar Gain", &config.audio.bar_gain, 0.1f, 1.0f, "%.2f");
+	// if (ImGui::SliderInt("Bar Count", &config.audio.bar_count, 1, FFT_SIZE_HALF, "%d"))
+	// {
+	// 	state.window_needs_redraw = true;
+	// }
+	// ImGui::Inputdouble("Bar Gain", &config.audio.bar_gain, 0.1f, 1.0f, "%.2f");
 
+	// if (ImGui::Inputdouble("Min Db", &config.audio.min_db, 0.1f, 1.0f, "%.2f"))
+	// {
+	// 	config.audio.min_db = clamp(config.audio.min_db, -std::numeric_limits<double>::infinity(), config.audio.max_db);
+	// }
+	// if (ImGui::Inputdouble("Max Db", &config.audio.max_db, 0.1f, 1.0f, "%.2f"))
+	// {
+	// 	config.audio.max_db = clamp(config.audio.max_db, config.audio.min_db, 25.0f);
+	// }
 
-	if (ImGui::InputFloat("Min Db", &config.audio.min_db, 0.1f, 1.0f, "%.2f"))
-	{
-		config.audio.min_db = clamp(config.audio.min_db, -std::numeric_limits<float>::infinity(), config.audio.max_db);
-	}
-	if (ImGui::InputFloat("Max Db", &config.audio.max_db, 0.1f, 1.0f, "%.2f"))
-	{
-		config.audio.max_db = clamp(config.audio.max_db, config.audio.min_db, 25.0f);
-	}
+	// if (ImGui::Inputdouble("Time Smoothing", &config.audio.time_smoothing, 0.1f, 1.0f, "%.3f"))
+	// {
+	// 	config.audio.time_smoothing = std::max(config.audio.time_smoothing, 0.f);
+	// }
 
-	if (ImGui::InputFloat("Time Smoothing", &config.audio.time_smoothing, 0.1f, 1.0f, "%.3f"))
-	{
-		config.audio.time_smoothing = std::max(config.audio.time_smoothing, 0.f);
-	}
+	// ImGui::Combo("DFT Windowingfunction", (int *)&config.audio.windowfunction, AudioWindowFunctionCombo);
 
-	ImGui::Combo("FFT Windowingfunction", (int*)&config.audio.windowfunction, AudioWindowFunctionCombo);
+	// if (ImGui::Inputdouble("Min bass freq", &config.audio.min_freq, 10.f, 100.f, "%.2f"))
+	// {
+	// 	config.audio.min_freq = clamp(config.audio.min_freq, 0, config.audio.max_freq);
+	// }
+	// if (ImGui::Inputdouble("Max bass freq", &config.audio.max_freq, 10.f, 100.f, "%.2f"))
+	// {
+	// 	config.audio.max_freq =
+	// 	    clamp(config.audio.max_freq, config.audio.min_freq, std::numeric_limits<double>::infinity());
+	// }
 
-	if (ImGui::InputFloat("Min bass freq", &config.audio.min_freq, 10.f, 100.f, "%.2f"))
-	{
-		config.audio.min_freq = clamp(config.audio.min_freq, 0, config.audio.max_freq);
-	}
-	if (ImGui::InputFloat("Max bass freq", &config.audio.max_freq, 10.f, 100.f, "%.2f"))
-	{
-		config.audio.max_freq = clamp(config.audio.max_freq, config.audio.min_freq, std::numeric_limits<float>::infinity());
-	}
-
-	ImGui::InputFloat("BassCoeffA", &config.audio.bass_threshold_a, 0.1f, 1.f, "%.4f");
-	ImGui::InputFloat("BassCoeffB", &config.audio.bass_threshold_b, 0.1f, 1.f, "%.4f");
-
+	// ImGui::Inputdouble("BassCoeffA", &config.audio.bass_threshold_a, 0.1f, 1.f, "%.4f");
+	// ImGui::Inputdouble("BassCoeffB", &config.audio.bass_threshold_b, 0.1f, 1.f, "%.4f");
 }
-void Gui::renderTabConfig()
+void renderTabConfig()
 {
 	if (ImGui::Button("Load config"))
 	{
-		config.Load();
+		Config::Load();
 	}
 	if (ImGui::Button("Save config"))
 	{
-		config.Save();
+		Config::Save();
 	}
-
-	ImGui::Checkbox("Load config at startup", &config.load_config_on_startup);
-
 }
-void Gui::renderTabGraphics()
+void renderTabGraphics()
 {
-	if (ImGui::Checkbox("Enable VSync (not recommended)", &config.graphics.vsync))
-	{
-		g_window.setVerticalSyncEnabled(config.graphics.vsync);
-	}
+	// if (ImGui::Checkbox("Enable VSync (not recommended)", &config.graphics.vsync))
+	// {
+	// 	g_window.setVerticalSyncEnabled(config.graphics.vsync);
+	// }
 
-	if (!config.graphics.vsync)
-	{
-		if (ImGui::InputInt("FPS Limit", &config.graphics.framerate_limit, 0, 10))
-		{
-			g_window.setFramerateLimit(config.graphics.framerate_limit);
-		}
-	}
+	// if (!config.graphics.vsync)
+	// {
+	// 	if (ImGui::InputInt("FPS Limit", &config.graphics.framerate_limit, 0, 10))
+	// 	{
+	// 		g_window.setFramerateLimit(config.graphics.framerate_limit);
+	// 	}
+	// }
 }
 
-void Gui::renderTabDebug()
+void renderTabDebug()
 {
-	for (const auto& val : state.debug_textvec)
-	{
-		ImGui::Text(val.c_str());
-	}
+	// for (const auto &val : state.debug_textvec)
+	// {
+	// 	ImGui::Text(val.c_str());
+	// }
 }
-
-Gui g_gui;
+} // namespace Gui

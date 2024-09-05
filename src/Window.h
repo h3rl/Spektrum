@@ -1,6 +1,6 @@
 #pragma once
 #include "stdafx.h"
-
+#include <SFML/Graphics/RenderWindow.hpp>
 
 enum WindowOrigin : int
 {
@@ -17,19 +17,22 @@ enum WindowAxis : int
 	Computer // x right, y down
 };
 
-class Window : public sf::RenderWindow
+extern sf::RenderWindow *p_window;
+namespace Window
 {
-public:
-							Window();
+extern WindowOrigin viewOrigin;
+extern WindowAxis viewAxis;
+extern unsigned int height;
+extern unsigned int width;
+extern unsigned int antialiasing_level;
+extern unsigned int framerate_limit;
+extern bool vsync;
+extern bool needs_redraw;
 
-	bool					init();
-	sf::View				getSizedView();
-	void					updateSize();
-	sf::Vector2f			getCenter();
-	sf::Vector2f			getSizef();
-private:
-	WindowOrigin			m_viewOrigin;
-	WindowAxis				m_viewAxis;
-};
+void init();
+sf::View getSizedView();
+void updateSize();
+sf::Vector2f getCenter();
+sf::Vector2f getSizef();
 
-extern Window g_window;
+}; // namespace Window

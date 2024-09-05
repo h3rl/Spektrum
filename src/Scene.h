@@ -3,25 +3,14 @@
 
 #include <vector>
 
-#include "AudioSink.h"
-
-class Scene : private sf::NonCopyable
+namespace Scene
 {
-public:
-							Scene();
-	bool					init();
-	void					update(const sf::Time& dtTime);
-	void					render();
+void init();
+void update(const sf::Time &dtTime);
+void render();
 
-	void					buildScene();
+void buildScene();
 
-private:
-	std::vector<sf::RectangleShape>	rects;
-	sf::RectangleShape				radial_gradient_rect;
-	sf::Shader						radial_gradient_shader;
-	float							gradient_strength = 1.f;
-
-	float*							m_pData;
-};
-
-extern Scene g_scene;
+extern unsigned int bar_count;
+extern double gradient_strength;
+}
