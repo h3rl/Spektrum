@@ -1,6 +1,6 @@
 #include "color.h"
 
-sf::Color interpolateColor(sf::Color color1, sf::Color color2, double factor)
+sf::Color interpolateColor(sf::Color color1, sf::Color color2, float factor)
 {
 	uint8_t r1 = color1.r;
 	uint8_t g1 = color1.g;

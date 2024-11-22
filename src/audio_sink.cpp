@@ -1,6 +1,9 @@
 #include "audio_sink.h"
+#include "dft.h"
 #include "logging.h"
+#include "filter.h"
 
+#include <Windows.h>
 #include <mmsystem.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
@@ -17,17 +20,12 @@
 	LPCTSTR ___errMsg = ___err.ErrorMessage(); \
 	log_err("{}", ___errMsg);
 
-#define RETURN_ON_ERROR(hres)  \
-	if (FAILED(hres))          \
-	{                          \
-		PRINT_COM_ERROR(hres); \
-		return false;          \
-	}
-#define BREAK_ON_ERROR(hres)   \
-	if (FAILED(hres))          \
-	{                          \
-		PRINT_COM_ERROR(hres); \
-		break;                 \
+#define assert_msg_hr(hr, format, ...)  \
+	if (FAILED(hr))                     \
+	{                                   \
+		log_err(format, ##__VA_ARGS__); \
+		PRINT_COM_ERROR(hr);            \
+		assert(FAILED(hr));             \
 	}
 
 #define REFTIMES_PER_SEC 10000000
@@ -44,16 +42,15 @@ namespace AudioSink
 const REFERENCE_TIME hns_requested_duration = REFTIMES_PER_SEC;
 
 // Globals
-bool initialized = false;
 unsigned int samplerate = 0;
-unsigned int buffer_size = 1024;
-double *buffer = nullptr; // contains audio_data, idx=0 is latest sample
 
+// Locals
+bool initialized = false;
 // ringbuffer to store audio data
-boost::circular_buffer<double> ring_buffer;
+boost::circular_buffer<float> audio_buffer((size_t)MAX_DFT_SIZE);
+boost::circular_buffer<float> audio_buffer_50_100((size_t)MAX_DFT_SIZE);
 
 // WASAPI stuff
-REFERENCE_TIME hns_actual_duration;
 UINT32 bufferFrameCount;
 UINT32 numFramesAvailable;
 IMMDeviceEnumerator *pDeviceEnumerator = nullptr;
@@ -62,109 +59,102 @@ IAudioClient *pAudioClient = nullptr;
 IAudioCaptureClient *pCaptureClient = nullptr;
 WAVEFORMATEX *pwaveformatex = nullptr;
 
-pfn_ProcessPacketBuffer p_process_packet_buffer_callback = nullptr;
-
 void init()
 {
 	HRESULT hr;
 
 	if (initialized)
 	{
-		log_err("Already initialized");
+		log_err("AudioSink::init was called, but it is already initialized!");
 		return;
 	}
 
 	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	assert_msg(SUCCEEDED(hr), "CoInitializeEx failed");
+	assert_msg_hr(hr, "CoInitializeEx failed");
 
 	hr = CoCreateInstance(CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, IID_IMMDeviceEnumerator,
 	                      (void **)&pDeviceEnumerator);
-	assert_msg(SUCCEEDED(hr), "CoCreateInstance failed");
+	assert_msg_hr(hr, "CoCreateInstance failed");
 
 	hr = pDeviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-	assert_msg(SUCCEEDED(hr), "pDeviceEnumerator->GetDefaultAudioEndpoint failed");
+	assert_msg_hr(hr, "pDeviceEnumerator->GetDefaultAudioEndpoint failed");
 
 	hr = pDevice->Activate(IID_IAudioClient, CLSCTX_ALL, NULL, (void **)&pAudioClient);
-	assert_msg(SUCCEEDED(hr), "pDevice->Activate failed");
+	assert_msg_hr(hr, "pDevice->Activate failed");
 
 	hr = pAudioClient->GetMixFormat(&pwaveformatex);
-	assert_msg(SUCCEEDED(hr), "pAudioClient->GetMixFormat failed");
+	assert_msg_hr(hr, "pAudioClient->GetMixFormat failed");
 
-	//pwaveformatex->wFormatTag = WAVE_FORMAT_PCM;
-	//pwaveformatex->nChannels = 2;
-	//pwaveformatex->nSamplesPerSec = 16000;
-	//pwaveformatex->wBitsPerSample = 16;
-	//pwaveformatex->nBlockAlign = pwaveformatex->nChannels * pwaveformatex->wBitsPerSample / 8;
-	//pwaveformatex->nAvgBytesPerSec = pwaveformatex->nSamplesPerSec * pwaveformatex->nBlockAlign;
-	//pwaveformatex->cbSize = 0;
-
-	// because we downsample later, divide by 2
-	// samplerate = pwaveformatex->nSamplesPerSec / 2;
 	samplerate = pwaveformatex->nSamplesPerSec;
 
-	log_msg_ln("Samplerate:  {}", pwaveformatex->nSamplesPerSec);
-	log_msg_ln("channelcount: {}", pwaveformatex->nChannels);
+	log_msg_ln("AudioSink Properties:");
+	log_msg_ln("\tSamplerate: {}hz", pwaveformatex->nSamplesPerSec);
+	log_msg_ln("\tnChannels: {}", pwaveformatex->nChannels);
 
 	assert_msg(pwaveformatex->nChannels == 2, "Only stereo supported so far");
 
 	WAVEFORMATEX *pwfx = NULL;
 
 	hr = pAudioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, pwaveformatex, &pwfx);
-	assert_msg(SUCCEEDED(hr), "pAudioClient->IsFormatSupported failed");
+	assert_msg_hr(hr, "pAudioClient->IsFormatSupported failed");
 
 	hr = pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, hns_requested_duration, 0,
 	                              pwaveformatex, NULL);
-	assert_msg(SUCCEEDED(hr), "pAudioClient->Initialize failed");
+	assert_msg_hr(hr, "pAudioClient->Initialize failed");
 
 	// Get the size of the allocated buffer.
 	hr = pAudioClient->GetBufferSize(&bufferFrameCount);
-	assert_msg(SUCCEEDED(hr), "pAudioClient->GetBufferSize failed");
+	assert_msg_hr(hr, "pAudioClient->GetBufferSize failed");
 
-	// Resize ringbuffer
-	resize_buffers(bufferFrameCount * pwaveformatex->nChannels);
+	// Resize ringbuffer to fit all the samples for the requested duration
+	//unsigned int new_size = bufferFrameCount; // do not account for channels, its mono
+	//audio_buffer.resize(new_size);
+	//log_msg_ln("AudioSink: Buffer resized to {}", new_size);
+
+	audio_buffer.resize(MAX_DFT_SIZE);
+	audio_buffer_50_100.resize(MAX_DFT_SIZE);
+
+	// Fill with zeros
+	std::fill(audio_buffer.begin(), audio_buffer.end(), 0.0f);
+	std::fill(audio_buffer_50_100.begin(), audio_buffer_50_100.end(), 0.0f);
 
 	hr = pAudioClient->GetService(IID_IAudioCaptureClient, (void **)&pCaptureClient);
-	assert_msg(SUCCEEDED(hr), "pAudioClient->GetService failed");
+	assert_msg_hr(hr, "pAudioClient->GetService failed");
 
 	// Start recording.
 	hr = pAudioClient->Start();
-	assert_msg(SUCCEEDED(hr), "pAudioClient->Start failed");
+	assert_msg_hr(hr, "pAudioClient->Start failed");
 
 	initialized = true;
 }
 
-void set_process_packet_buffer_callback(pfn_ProcessPacketBuffer callback)
+void process_packet_buffer(void *pData, const unsigned int size)
 {
-	p_process_packet_buffer_callback = callback;
-}
-
-void process_packet_buffer(float *pData, const unsigned int size)
-{
+	float *p = (float *)pData;
 	// There can only be two channels at this point: left and right (because of assertions)
 	for (unsigned int i = 0; i < size; i += 2)
 	{
 		// average l/r to create mono, maintaining samplerate
-		const double downsampled = 0.5 * (pData[i] + pData[i + 1]);
+		const float downsampled = 0.5 * (p[i] + p[i + 1]);
 		// alternatively average 4 samples to reduce samplerate by 2
-		ring_buffer.push_front(downsampled);
+		audio_buffer.push_front(downsampled);
+
+		//audio_buffer_50_100.push_front(Filter::butterworth(audio_buffer, audio_buffer_50_100, BWType::BP_50_100));
 	}
 }
 
-void update(const sf::Time &dtTime)
+void update()
 {
-	assert_msg(initialized, "Not initialized");
+	assert_msg(initialized, "AudioSink::update was called, but it is not initialized!");
 
 	const int bytesPerSamplePerChannel = pwaveformatex->wBitsPerSample / 8;
 	const int bytesPerSample = bytesPerSamplePerChannel * pwaveformatex->nChannels;
 
 	if (bytesPerSamplePerChannel != 4)
 	{
-		log_err("Unimplemented sample size: {}", bytesPerSamplePerChannel);
+		log_err("AudioSink: Unimplemented sample size: {}", bytesPerSamplePerChannel);
 		return;
 	}
-
-	HRESULT hr;
-	bool bufferCleared = false;
 
 	BYTE *pData = nullptr;
 	UINT32 num_frames_available = 0;
@@ -175,64 +165,36 @@ void update(const sf::Time &dtTime)
 	{
 		if (num_frames_available == 0)
 		{
+			// Docs says we do not need to release in this case
 			break;
 		}
 
+		// Parse flags
 		if (flags != 0)
 		{
-			// TODO: handle flags (AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY | AUDCLNT_BUFFERFLAGS_SILENT | AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR)
-			if (flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY)
-			{
-				flags &= ~AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY;
-				//log_warn("GetBuffer returned AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY");
-				// continue to prevent glitching
-				pCaptureClient->ReleaseBuffer(num_frames_available);
-				continue;
-			}
 			if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
 			{
-				flags &= ~AUDCLNT_BUFFERFLAGS_SILENT;
-				log_warn("GetBuffer returned AUDCLNT_BUFFERFLAGS_SILENT");
+				// The docs say we cant read from the stream when this flag is set,
+				// so we just push zeros to prevent problems
+				for (size_t i = 0; i < num_frames_available; i++)
+				{
+					audio_buffer.push_front(0.0f);
+				}
 			}
-			if (flags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR)
-			{
-				flags &= ~AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR;
-				log_warn("GetBuffer returned AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR");
-			}
-			if (flags != 0)
-			{
-				log_err("GetBuffer returned unhandled flags: {}", flags);
-			}
+			// in case of AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR or AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY
+			// we just skip the current buffer and continue to prevent glitching
+
+			pCaptureClient->ReleaseBuffer(num_frames_available);
+			continue;
 		}
 		const int buffer_sample_count = num_frames_available * pwaveformatex->nChannels;
 
-		// Do stuff with buffer
-		// if (p_process_packet_buffer_callback != nullptr)
-		// {
-		// 	p_process_packet_buffer_callback((float *)pData, buffer_sample_count);
-		// }
-		//log_msg_ln("Buffer sample count: {}", buffer_sample_count);
-		process_packet_buffer((float *)pData, buffer_sample_count);
+		// Do stuff with the audio buffer
+		process_packet_buffer((void *)pData, buffer_sample_count);
 
+		// Release the buffer
 		pCaptureClient->ReleaseBuffer(num_frames_available);
 	}
-
-	// copy ringbuffer to buffer
-	std::copy(ring_buffer.begin(), ring_buffer.end(), buffer);
-}
-
-void resize_buffers(unsigned int new_size)
-{
-	if (buffer)
-	{
-		delete[] buffer;
-	}
-
-	ring_buffer.resize(new_size);
-	buffer = new double[new_size];
-
-	buffer_size = new_size;
-	log_msg_ln("Buffer resized to {}", new_size);
 }
 
 #define SAFE_RELEASE(ob) \
@@ -251,4 +213,60 @@ void release()
 	SAFE_RELEASE(pCaptureClient);
 	CoUninitialize();
 }
+
+float get_buffer_duration()
+{
+	unsigned int buffer_size = get_buffer_size();
+	return (float)buffer_size / samplerate;
+}
+
+unsigned int get_buffer_size()
+{
+	assert_msg(audio_buffer.capacity() > 0, "AudioSink::get_buffer_size called, but audio_buffer is empty!");
+	return audio_buffer.capacity();
+}
+
+void get_buffer(float *buffer, unsigned int size)
+{
+	if (!buffer)
+	{
+		return;
+	}
+
+	std::copy(audio_buffer.begin(), audio_buffer.begin() + size, buffer);
+}
+
+void get_buffer(float *buffer, unsigned int size, AudioType type)
+{
+	if (!buffer)
+	{
+		return;
+	}
+
+	boost::circular_buffer<float> *target = nullptr;
+	if (type == AudioType::Original)
+	{
+		target = &audio_buffer;
+	}
+	else if (type == AudioType::Kick)
+	{
+		target = &audio_buffer_50_100;
+	}
+	else
+	{
+		log_err("AudioSink::get_buffer called with unknown type");
+		return;
+	}
+
+	if (target)
+	{
+		std::copy(target->begin(), target->begin() + size, buffer);
+	}
+}
+
+unsigned int get_samplerate()
+{
+	return samplerate;
+}
+
 }; // namespace AudioSink

@@ -41,3 +41,5 @@ inline void _log(const char *file, int line, const fmt::text_style st, fmt::stri
 		log_err(format, ##__VA_ARGS__); \
 		assert(expr);                   \
 	}
+
+extern std::vector<std::string> debug_vec;

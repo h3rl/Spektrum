@@ -5,8 +5,9 @@
 
 #include "dft.h"
 #include "audio_sink.h"
+#include "beat_detector.h"
 #include "config.h"
-#include "scene_histogram.h"
+#include "scene.h"
 #include "window.h"
 #include "gui.h"
 
@@ -16,7 +17,6 @@
 void render();
 void update(const sf::Time &dt);
 void processEvents();
-void process_packet_buffer_callback(float *pData, const unsigned int size);
 
 int main()
 {
@@ -31,10 +31,7 @@ int main()
 
 	AudioSink::init();
 
-	AudioSink::set_process_packet_buffer_callback((pfn_ProcessPacketBuffer)process_packet_buffer_callback);
-
-	// Scene::init();
-	SceneHistogram::init();
+	//AudioSink::set_process_packet_buffer_callback((pfn_ProcessPacketBuffer)process_packet_buffer_callback);
 
 	// Main loop
 	sf::Clock clock;
@@ -47,20 +44,23 @@ int main()
 		render();
 	}
 
+	BeatDetector::release();
+	AudioSink::release();
+
 	return EXIT_SUCCESS;
 }
 /*
 sf::Vector2i oldpos, pos;
 sf::Vector2f movedelta;
-double scrolldelta;
+float scrolldelta;
 bool firstTimeDelta = true;
 
-void zoomViewAt(sf::Vector2i pixel, Window& window, double wheeldelta)
+void zoomViewAt(sf::Vector2i pixel, Window& window, float wheeldelta)
 {
     if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift))
         return;
 
-    double zoom = 1.1f;
+    float zoom = 1.1f;
     if (wheeldelta > 0)
     {
         zoom = 1.0f / zoom;
@@ -83,7 +83,7 @@ void process_packet_buffer_callback(float *pData, const unsigned int size)
 	{
 		if (i >= 10)
 			break;
-		const double downsampled =
+		const float downsampled =
 		    0.25f * (pData[i] + pData[i + 1] + pData[i + 2] + pData[i + 3]); // average to create mono
 		log_msg("{:.4f} ", abs(downsampled));
 	}
@@ -154,7 +154,7 @@ void processEvents()
 
 			// regenerate scene
 			// Scene::buildScene();
-			SceneHistogram::rebuild();
+			Scene::build();
 			break;
 		}
 		case sf::Event::Closed:
@@ -171,12 +171,15 @@ void processEvents()
 
 void update(const sf::Time &dtTime)
 {
+	Window::update();
+
 	Gui::preupdate();
 
-	AudioSink::update(dtTime);
+	AudioSink::update();
+	BeatDetector::update();
 
 	// Scene::update(dtTime);
-	SceneHistogram::update(dtTime);
+	Scene::update();
 
 	Gui::update(dtTime);
 }
@@ -186,7 +189,7 @@ void render()
 	p_window->clear();
 
 	// Scene::render();
-	SceneHistogram::render();
+	Scene::render();
 	Gui::render();
 
 	p_window->display();
@@ -195,7 +198,7 @@ void render()
 //{
 //	if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
 //	{
-//		sf::Vector2f delta{ (double)evt.x, (double)evt.y };
+//		sf::Vector2f delta{ (float)evt.x, (float)evt.y };
 //		delta *= 0.01f;
 //		sf::View view = window.getView();
 //		view.move(delta);

@@ -1,23 +1,23 @@
 #pragma once
 #include "stdafx.h"
 
-#include <Windows.h>
+// Todo: make a way to request the timeduration the buffer should have
 
-typedef void (*pfn_ProcessPacketBuffer)(float *pData, unsigned int size);
+enum class AudioType : uint8_t
+{
+	Original,
+	Kick
+};
 
 namespace AudioSink
 {
-
-extern bool initialized;
-extern unsigned int samplerate;
-extern unsigned int buffer_size;
-extern double *buffer;
-
 void init();
-void update(const sf::Time &dtTime);
+void update();
 void release();
 
-void set_process_packet_buffer_callback(pfn_ProcessPacketBuffer callback);
-void resize_buffers(unsigned int new_size);
-
+float get_buffer_duration();
+unsigned int get_buffer_size();
+void get_buffer(float *buffer, unsigned int size); // returns original audio data
+void get_buffer(float *buffer, unsigned int size, AudioType type); // request last "size" samples
+unsigned int get_samplerate();
 }; // namespace AudioSink

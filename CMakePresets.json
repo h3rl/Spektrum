@@ -1,47 +1,13 @@
 {
-    "version": 8,
-    "configurePresets": [
-        {
-            "name": "win32-msvc-x64-debug",
-            "displayName": "Windows MSVC x64 (Visual Studio 17 2022) Debug",
-            "description": "Windows Debug",
-            "generator": "Visual Studio 17 2022",
-            "binaryDir": "${sourceDir}/out/${presetName}/build",
-            "installDir": "${sourceDir}/out/${presetName}/install",
-            "hidden": false,
-            "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "C:/sdk/vcpkg/scripts/buildsystems/vcpkg.cmake",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/${presetName}/install",
-                "CMAKE_BUILD_TYPE": "Debug",
-                "VCPKG_TARGET_TRIPLET": "x64-windows"
-            }
-        },
-        {
-            "name": "win32-msvc-x64-release",
-            "displayName": "Windows MSVC x64 (Visual Studio 17 2022) Release",
-            "description": "Windows Release",
-            "generator": "Visual Studio 17 2022",
-            "binaryDir": "${sourceDir}/out/${presetName}/build",
-            "installDir": "${sourceDir}/out/${presetName}/install",
-            "hidden": false,
-            "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "C:/sdk/vcpkg/scripts/buildsystems/vcpkg.cmake",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/${presetName}/install",
-                "CMAKE_BUILD_TYPE": "Release",
-                "VCPKG_TARGET_TRIPLET": "x64-windows"
-            }
-        }
-    ],
-    "buildPresets": [
-        {
-            "name": "win32-msvc-x64-debug",
-            "displayName": "Windows MSVC x64 (Visual Studio 17 2022) Debug",
-            "configurePreset": "win32-msvc-x64-debug"
-        },
-        {
-            "name": "win32-msvc-x64-release",
-            "displayName": "Windows MSVC x64 (Visual Studio 17 2022) Release",
-            "configurePreset": "win32-msvc-x64-release"
-        }
-    ]
+  "version": 2,
+  "configurePresets": [
+    {
+      "name": "default",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    }
+  ]
 }

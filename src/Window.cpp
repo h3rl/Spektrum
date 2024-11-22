@@ -39,6 +39,11 @@ void init()
 	// updateSize();
 }
 
+void update()
+{
+	// update framelimit, vsync and aliasinglevel
+}
+
 // sf::View getSizedView()
 // {
 // 	sf::View view = window.getDefaultView();

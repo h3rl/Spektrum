@@ -3,14 +3,17 @@
 
 #include <vector>
 
+enum class Scenes
+{
+	Histogram,
+	Circle,
+};
+
 namespace Scene
 {
-void init();
-void update(const sf::Time &dtTime);
+extern Scenes scene;
+
+void build();
+void update();
 void render();
-
-void buildScene();
-
-extern unsigned int bar_count;
-extern double gradient_strength;
-}
+}; // namespace Scene

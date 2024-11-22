@@ -102,12 +102,12 @@ void Config::Load()
 	audio.bar_gain = clamp(audio.bar_gain, 0.0f, 10.0f);
 	audio.time_smoothing = clamp(audio.time_smoothing, 0.0f, 1.0f);
 	audio.max_db = clamp(audio.max_db, audio.min_db, 25.0f);
-	audio.min_db = clamp(audio.min_db, -std::numeric_limits<double>::infinity(), audio.max_db);
-	audio.max_freq = clamp(audio.max_freq, audio.min_freq, std::numeric_limits<double>::infinity());
+	audio.min_db = clamp(audio.min_db, -std::numeric_limits<float>::infinity(), audio.max_db);
+	audio.max_freq = clamp(audio.max_freq, audio.min_freq, std::numeric_limits<float>::infinity());
 	audio.min_freq = clamp(audio.min_freq, 0.0f, audio.max_freq);
 
 	audio.min_freq = clamp(audio.min_freq, 0, audio.max_freq);
-	audio.max_freq = clamp(audio.max_freq, audio.min_freq, std::numeric_limits<double>::infinity());
+	audio.max_freq = clamp(audio.max_freq, audio.min_freq, std::numeric_limits<float>::infinity());
 
 	// request redraw
 	state.window_needs_redraw = true;

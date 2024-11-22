@@ -21,7 +21,7 @@
 #define FFT_SIZE (int)(1 << 12)
 #define FFT_SIZE_HALF FFT_SIZE / 2 + 1
 
-typedef void (*pfn_ProcessPacketBuffer)(boost::circular_buffer<double> &dest, double *pData, const UINT &size);
+typedef void (*pfn_ProcessPacketBuffer)(boost::circular_buffer<float> &dest, float *pData, const UINT &size);
 
 namespace Audio
 {
@@ -54,15 +54,15 @@ private:
 	bool m_bInitialized = false;
 	bool m_bStopThread = false;
 
-	boost::circular_buffer<double> m_rawmonodata{ FFT_SIZE };
+	boost::circular_buffer<float> m_rawmonodata{ FFT_SIZE };
 
-	double fftInput[FFT_SIZE] = {};
+	float fftInput[FFT_SIZE] = {};
 	fftw_plan fftPlan = nullptr;
 	fftw_complex fftOutputComplex[FFT_SIZE_HALF] = {};
-	double fftOutput[FFT_SIZE_HALF] = {};
+	float fftOutput[FFT_SIZE_HALF] = {};
 
 public:
-	double Output[FFT_SIZE_HALF] = {};
+	float Output[FFT_SIZE_HALF] = {};
 
 	pfn_ProcessPacketBuffer p_process_packet_buffer_callback = nullptr;
 
@@ -74,7 +74,7 @@ public:
 	void set_process_packet_buffer_callback(pfn_ProcessPacketBuffer callback);
 
 	void update(const sf::Time &dtTime);
-	double get_frequencies_per_sample();
+	float get_frequencies_per_sample();
 
 private:
 	void release();

@@ -37,7 +37,7 @@ enum AudioAxisScale : int
 class State
 {
 public:
-	State(){};
+	State() {};
 
 	bool window_needs_redraw{ false };
 	bool in_gui{ false };
@@ -74,15 +74,15 @@ public:
 		AudioWindowFunction windowfunction{ Blackman };
 		AudioAxisScale barstyle{ Logarithmic };
 		int bar_count{ (int)(FFT_SIZE_HALF) };
-		double bar_gain{ 1.0f };
-		double time_smoothing{ 0.82f };
-		double min_db{ -60.0f };
-		double max_db{ 0.0f };
-		double min_freq{ 20.0f };
-		double max_freq{ 20000.0f };
+		float bar_gain{ 1.0f };
+		float time_smoothing{ 0.82f };
+		float min_db{ -60.0f };
+		float max_db{ 0.0f };
+		float min_freq{ 20.0f };
+		float max_freq{ 20000.0f };
 
-		double bass_threshold_a{ -15.f };
-		double bass_threshold_b{ 1.55f };
+		float bass_threshold_a{ -15.f };
+		float bass_threshold_b{ 1.55f };
 	} audio;
 
 	/* IO functions */

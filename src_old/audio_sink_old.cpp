@@ -99,7 +99,7 @@ bool Sink::init()
 	RETURN_ON_ERROR(hr);
 
 	// Calculate the actual duration of the allocated buffer.
-	//hnsActualDuration = (double)REFTIMES_PER_SEC * bufferFrameCount / pwaveformatex->nSamplesPerSec;
+	//hnsActualDuration = (float)REFTIMES_PER_SEC * bufferFrameCount / pwaveformatex->nSamplesPerSec;
 
 	fftPlan = fftw_plan_dft_r2c_1d(FFT_SIZE, this->fftInput, this->fftOutputComplex, 0);
 
@@ -187,7 +187,7 @@ void Sink::update(const sf::Time &dtTime)
 			return;
 		}
 
-		CallbackProcessPacketBuffer(m_rawmonodata, (double *)pData, bufferSampleCount);
+		CallbackProcessPacketBuffer(m_rawmonodata, (float *)pData, bufferSampleCount);
 
 		// copy data from deque to fft input
 		std::copy(m_rawmonodata.begin(), m_rawmonodata.end(), fftInput);
@@ -202,14 +202,14 @@ void Sink::update(const sf::Time &dtTime)
 
 		for (int i = 0; i < FFT_SIZE_HALF; i++)
 		{
-			const double real = fftOutputComplex[i][0];
-			const double imag = fftOutputComplex[i][1];
-			const double mag = sqrt(real * real + imag * imag);
+			const float real = fftOutputComplex[i][0];
+			const float imag = fftOutputComplex[i][1];
+			const float mag = sqrt(real * real + imag * imag);
 
-			const double timeconst = config.audio.time_smoothing;
-			const double seconds = dtTime.asSeconds();
+			const float timeconst = config.audio.time_smoothing;
+			const float seconds = dtTime.asSeconds();
 
-			const double tau = 1.0f - std::exp(-seconds / timeconst);
+			const float tau = 1.0f - std::exp(-seconds / timeconst);
 			fftOutput[i] = tau * fftOutput[i] + (1.f - tau) * mag;
 
 			switch (config.audio.barstyle)
@@ -222,14 +222,14 @@ void Sink::update(const sf::Time &dtTime)
 			case Logarithmic:
 			{
 				// calc db
-				const double dbout = 20.f * log10(fftOutput[i]);
+				const float dbout = 20.f * log10(fftOutput[i]);
 
 				// populate byteFrequencyData
-				const double dbMax = config.audio.max_db;
-				const double dbMin = config.audio.min_db;
-				const double dbRange = dbMax - dbMin;
+				const float dbMax = config.audio.max_db;
+				const float dbMin = config.audio.min_db;
+				const float dbRange = dbMax - dbMin;
 
-				double doubleval = 1.f / dbRange * (dbout - dbMin);
+				float doubleval = 1.f / dbRange * (dbout - dbMin);
 				Output[i] = clamp(doubleval, 0.f, 1.f);
 			}
 			}
@@ -248,9 +248,9 @@ void Sink::update(const sf::Time &dtTime)
 	}
 }
 
-double Sink::get_frequencies_per_sample()
+float Sink::get_frequencies_per_sample()
 {
-	return (double)state.audio_samplerate / (double)FFT_SIZE_HALF;
+	return (float)state.audio_samplerate / (float)FFT_SIZE_HALF;
 }
 
 #define SAFE_RELEASE(ob) \

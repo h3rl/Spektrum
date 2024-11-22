@@ -1,6 +1,5 @@
 {
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-    "cmake.configureOnOpen": true,
     "files.associations": {
         "*.h++": "cpp",
         "vector": "cpp",
@@ -18,13 +17,26 @@
         "xhash": "cpp",
         "xstring": "cpp",
         "xtree": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "chrono": "cpp",
+        "filesystem": "cpp",
+        "thread": "cpp",
+        "system_error": "cpp",
+        "typeindex": "cpp",
+        "xlocale": "cpp",
+        "charconv": "cpp",
+        "execution": "cpp",
+        "sstream": "cpp",
+        "xlocnum": "cpp",
+        "xmemory": "cpp"
     },
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "ms-vscode.cpptools",
     "C_Cpp.clang_format_style": "file:${workspaceFolder}/.clang-format",
+    "cmake.configureOnOpen": true,
     "cmake.debugConfig": {
         // "externalConsole": true,
         "cwd": "${workspaceFolder}"
     },
+    "cmake.buildPreset": "win32-msvc-x64-release"
 }

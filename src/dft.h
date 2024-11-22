@@ -1,29 +1,21 @@
 #pragma once
 #include "stdafx.h"
 
-// Discrete Fourier Transform
+#define MAX_DFT_SIZE ((uint16_t)1 << 14)
+
 class DFT
 {
 private:
-	fftw_plan m_plan;
+	fftwf_plan m_plan;
+	unsigned int m_last_dft_size;
+	fftwf_complex *m_out_complex;
 
-	bool m_allocated_buffers;
-	unsigned int m_size;
-	double *m_out;
-	double *m_in;
-	fftw_complex *m_out_complex;
+	void release();
 
 public:
 	DFT();
 	~DFT();
 
-	void create(unsigned int size, double *in);
-	void resize(unsigned int size);
-	void execute();
-	void normalize();
-	double *getOutput();
-	unsigned int getOutputSize();
+	// specify the size of the input data, out comes size/2+1 data points
+	void execute(unsigned int dft_size, float *in_data, float *out_data);
 };
-
-// wanted
-// void DFT::execute(size, in, out)

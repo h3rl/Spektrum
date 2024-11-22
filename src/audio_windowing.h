@@ -15,4 +15,4 @@ enum AudioWindowFunction : int
 	BlackmanHarris
 };
 
-void apply_windowing(const AudioWindowFunction wf, double *data, size_t size);
+void apply_windowing(const AudioWindowFunction wf, float *data, size_t size);

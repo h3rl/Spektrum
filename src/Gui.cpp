@@ -2,6 +2,9 @@
 #include "config.h"
 #include "logging.h"
 #include "window.h"
+#include "audio_sink.h"
+#include "beat_detector.h"
+#include "dft.h"
 
 #include <imgui.h>
 #include <imgui-SFML.h>
@@ -32,7 +35,7 @@ void release()
 
 void preupdate()
 {
-	//state.debug_textvec.clear();
+	debug_vec.clear();
 }
 
 void init()
@@ -43,6 +46,11 @@ void init()
 	ImGui::GetIO().IniFilename = nullptr;
 
 	bool font_loaded = font.loadFromFile("assets\\arial.ttf");
+	if (!font_loaded)
+	{
+		// Try to load from windows font folder
+		font_loaded = font.loadFromFile("C:\\Windows\\Fonts\\arial.ttf");
+	}
 	assert_msg(font_loaded, "GUI: Load font failed");
 
 	fps_text.setFont(font);
@@ -80,6 +88,7 @@ void renderFpsText()
 	// sf::View newview = p_window->getDefaultView();
 	// Reset view to default, so we can draw the text
 	// p_window->setView(newview);
+	p_window->setView(p_window->getDefaultView());
 	p_window->draw(fps_text);
 
 	// Set it back to the original view
@@ -140,6 +149,30 @@ void renderMenuV1()
 
 void renderTabMain()
 {
+	ImGui::Text("Bars style");
+	ImGui::InputInt("DFT Size", (int *)&BeatDetector::dft_size, 1, (int)MAX_DFT_SIZE);
+	{
+		Window::needs_redraw = true;
+	}
+	ImGui::SliderFloat("DFT ZeroPad Factor", &BeatDetector::dft_zeropad_factor, 0.0f, 1.0f);
+
+	ImGui::SliderFloat("Filter Factor", &BeatDetector::filter_factor_sigma, 0.f, 100.0f);
+
+	ImGui::SliderFloat("Time Smoothing", &BeatDetector::time_smoothing, 0.f, 1.0f);
+
+	ImGui::Text("Bar Positioning Y");
+	ImGui::DragFloat("Min Db", &BeatDetector::db_min, 5.0f);
+	ImGui::DragFloat("Max Db", &BeatDetector::db_max, 5.0f);
+
+	ImGui::Text("Bar Positioning X");
+	ImGui::InputFloat("Min Freq", &BeatDetector::f_min, 10.0f);
+	ImGui::InputFloat("Max Freq", &BeatDetector::f_max, 10.0f);
+
+	ImGui::Text("Loudness / Beatdetection");
+	ImGui::InputFloat("Loudness Alpha", &BeatDetector::loudness_alpha, 0.01f);
+	ImGui::InputFloat("Loudness Min Freq", &BeatDetector::loudness_f_min, 10.0f);
+	ImGui::InputFloat("Loudness Max Freq", &BeatDetector::loudness_f_max, 10.0f);
+
 	// ImGui::Combo("Bar style", (int *)&config.audio.barstyle, "Linear\0Logarithmic\0\0");
 
 	// if (ImGui::SliderInt("Bar Count", &config.audio.bar_count, 1, FFT_SIZE_HALF, "%d"))
@@ -150,7 +183,7 @@ void renderTabMain()
 
 	// if (ImGui::Inputdouble("Min Db", &config.audio.min_db, 0.1f, 1.0f, "%.2f"))
 	// {
-	// 	config.audio.min_db = clamp(config.audio.min_db, -std::numeric_limits<double>::infinity(), config.audio.max_db);
+	// 	config.audio.min_db = clamp(config.audio.min_db, -std::numeric_limits<float>::infinity(), config.audio.max_db);
 	// }
 	// if (ImGui::Inputdouble("Max Db", &config.audio.max_db, 0.1f, 1.0f, "%.2f"))
 	// {
@@ -171,7 +204,7 @@ void renderTabMain()
 	// if (ImGui::Inputdouble("Max bass freq", &config.audio.max_freq, 10.f, 100.f, "%.2f"))
 	// {
 	// 	config.audio.max_freq =
-	// 	    clamp(config.audio.max_freq, config.audio.min_freq, std::numeric_limits<double>::infinity());
+	// 	    clamp(config.audio.max_freq, config.audio.min_freq, std::numeric_limits<float>::infinity());
 	// }
 
 	// ImGui::Inputdouble("BassCoeffA", &config.audio.bass_threshold_a, 0.1f, 1.f, "%.4f");
@@ -190,25 +223,25 @@ void renderTabConfig()
 }
 void renderTabGraphics()
 {
-	// if (ImGui::Checkbox("Enable VSync (not recommended)", &config.graphics.vsync))
-	// {
-	// 	g_window.setVerticalSyncEnabled(config.graphics.vsync);
-	// }
+	if (ImGui::Checkbox("Enable VSync (not recommended)", &Window::vsync))
+	{
+		p_window->setVerticalSyncEnabled(Window::vsync);
+	}
 
-	// if (!config.graphics.vsync)
-	// {
-	// 	if (ImGui::InputInt("FPS Limit", &config.graphics.framerate_limit, 0, 10))
-	// 	{
-	// 		g_window.setFramerateLimit(config.graphics.framerate_limit);
-	// 	}
-	// }
+	if (!Window::vsync)
+	{
+		if (ImGui::InputInt("FPS Limit", &(int &)Window::framerate_limit, 0, 10))
+		{
+			p_window->setFramerateLimit(Window::framerate_limit);
+		}
+	}
 }
 
 void renderTabDebug()
 {
-	// for (const auto &val : state.debug_textvec)
-	// {
-	// 	ImGui::Text(val.c_str());
-	// }
+	 for (const auto &val : debug_vec)
+ {
+		ImGui::Text(val.c_str());
+	}
 }
 } // namespace Gui

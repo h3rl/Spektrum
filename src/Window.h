@@ -30,6 +30,8 @@ extern bool vsync;
 extern bool needs_redraw;
 
 void init();
+void update();
+
 sf::View getSizedView();
 void updateSize();
 sf::Vector2f getCenter();
